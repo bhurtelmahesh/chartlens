@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="ChartLens turns trading chart screenshots into structured, educational market observations." />
+  <title>ChartLens — Screenshot Market Analysis</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="noise"></div>
+  <header class="topbar">
+    <a class="brand" href="#" aria-label="ChartLens home">
+      <span class="brand-mark"><i></i><i></i><i></i></span>
+      <span>CHARTLENS</span>
+    </a>
+    <div class="top-actions">
+      <span class="status"><b></b> Analysis engine online</span>
+      <button class="history-button" id="historyButton" type="button">Recent <span id="historyCount">0</span></button>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero" id="hero">
+      <div class="eyebrow"><span>01</span> Screenshot intelligence</div>
+      <h1>See the structure.<br><em>Not the noise.</em></h1>
+      <p class="hero-copy">Drop in a chart screenshot. ChartLens reads its visual structure and turns it into a clean, explainable market brief.</p>
+
+      <div class="workspace-card">
+        <div class="upload-zone" id="uploadZone" tabindex="0" role="button" aria-label="Upload chart screenshot">
+          <input id="fileInput" type="file" accept="image/png,image/jpeg,image/webp" hidden />
+          <div class="upload-icon">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5M5 14v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"/></svg>
+          </div>
+          <div>
+            <strong>Drop your chart here</strong>
+            <span>or click to browse · PNG, JPG, WEBP up to 12 MB</span>
+          </div>
+          <button class="browse-button" type="button" tabindex="-1">Choose image</button>
+        </div>
+
+        <div class="file-loaded" id="fileLoaded" hidden>
+          <img id="thumb" alt="Uploaded trading chart preview" />
+          <div class="file-meta">
+            <strong id="fileName">chart.png</strong>
+            <span id="fileDetails">PNG · 1.2 MB</span>
+          </div>
+          <button id="removeFile" type="button" aria-label="Remove uploaded image">×</button>
+        </div>
+
+        <div class="metadata-row">
+          <label>
+            <span>Symbol <small>optional</small></span>
+            <input id="symbolInput" placeholder="e.g. BTCUSD" maxlength="16" autocomplete="off" />
+          </label>
+          <label>
+            <span>Timeframe</span>
+            <select id="timeframeInput">
+              <option value="15m">15 minutes</option>
+              <option value="1h" selected>1 hour</option>
+              <option value="4h">4 hours</option>
+              <option value="1D">1 day</option>
+              <option value="1W">1 week</option>
+            </select>
+          </label>
+          <label>
+            <span>Reference price <small>optional</small></span>
+            <input id="priceInput" type="number" min="0" step="any" placeholder="e.g. 64250" />
+          </label>
+        </div>
+
+        <div class="workspace-footer">
+          <button class="demo-button" id="demoButton" type="button">Try a demo chart</button>
+          <button class="analyze-button" id="analyzeButton" type="button" disabled>
+            <span>Analyze chart</span>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-5-5 5 5-5 5"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="trust-row">
+        <span><svg viewBox="0 0 24 24"><path d="M12 3 5 6v5c0 4.7 2.9 8.5 7 10 4.1-1.5 7-5.3 7-10V6l-7-3Z"/></svg> Runs locally in your browser</span>
+        <span><svg viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></svg> No image stored</span>
+        <span><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5m0-8v.01"/></svg> Educational analysis only</span>
+      </div>
+    </section>
+
+    <section class="processing" id="processing" hidden>
+      <div class="scanner">
+        <div class="scan-grid"></div>
+        <div class="scan-line"></div>
+        <div class="scanner-center"><span id="scanPercent">0%</span><small>reading pixels</small></div>
+      </div>
+      <div class="process-copy">
+        <div class="eyebrow"><span>02</span> Visual processing</div>
+        <h2>Reading market structure…</h2>
+        <ul id="processSteps">
+          <li class="active">Mapping high-contrast price regions</li>
+          <li>Estimating directional slope</li>
+          <li>Locating reaction zones</li>
+          <li>Building an explainable brief</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="results" id="results" hidden>
+      <div class="results-heading">
+        <div>
+          <div class="eyebrow"><span>03</span> Analysis brief</div>
+          <h2><span id="resultSymbol">CHART</span> <small>/ <span id="resultTimeframe">1H</span></small></h2>
+        </div>
+        <button id="newAnalysis" class="new-analysis" type="button">New analysis</button>
+      </div>
+
+      <div class="results-grid">
+        <article class="chart-panel">
+          <div class="panel-label"><span>Source image</span><small>Locally processed</small></div>
+          <div class="chart-frame">
+            <img id="resultImage" alt="Analyzed chart screenshot" />
+            <div class="zone zone-resistance"><span>Reaction zone</span></div>
+            <div class="zone zone-support"><span>Support zone</span></div>
+          </div>
+          <div class="image-stats">
+            <span id="imageDimensions">—</span>
+            <span id="edgeDensity">—</span>
+            <span id="analysisTime">—</span>
+          </div>
+        </article>
+
+        <div class="brief-column">
+          <article class="bias-card">
+            <div class="panel-label"><span>Structural bias</span><small id="confidenceLabel">Confidence —</small></div>
+            <div class="bias-main">
+              <div class="bias-orb" id="biasOrb"><svg viewBox="0 0 24 24"><path id="biasArrow" d="M5 16 10 11l3 3 6-7"/></svg></div>
+              <div><h3 id="biasTitle">—</h3><p id="biasSummary">—</p></div>
+            </div>
+            <div class="confidence-track"><i id="confidenceBar"></i></div>
+          </article>
+
+          <article class="observation-card">
+            <div class="panel-label"><span>What the image suggests</span><small>Visual heuristic</small></div>
+            <ul id="observations"></ul>
+          </article>
+
+          <div class="scenario-grid">
+            <article class="scenario bull">
+              <span>Upside scenario</span>
+              <p id="bullScenario">—</p>
+            </article>
+            <article class="scenario bear">
+              <span>Downside scenario</span>
+              <p id="bearScenario">—</p>
+            </article>
+          </div>
+
+          <article class="risk-card">
+            <svg viewBox="0 0 24 24"><path d="M12 3 2.5 20h19L12 3Z"/><path d="M12 9v5m0 3v.01"/></svg>
+            <p><strong>Not a trade signal.</strong> Screenshot analysis can miss indicators, labels and wider context. Confirm against live data before making any financial decision.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <span>CHARTLENS / MVP 0.1</span>
+    <p>Designed for observation, not prediction.</p>
+  </footer>
+
+  <aside class="history-drawer" id="historyDrawer" aria-hidden="true">
+    <div class="drawer-head"><h3>Recent analyses</h3><button id="closeHistory" type="button">×</button></div>
+    <div id="historyList" class="history-list"></div>
+  </aside>
+  <div class="drawer-backdrop" id="drawerBackdrop" hidden></div>
+
+  <canvas id="analysisCanvas" hidden></canvas>
+  <script src="app.js"></script>
+</body>
+</html>
