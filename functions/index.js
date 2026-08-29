@@ -7,6 +7,8 @@ const jsonHeaders = {
   "Cache-Control": "public, max-age=30"
 };
 
+const nepseApiBase = process.env.NEPSE_API_BASE || "https://nepseapi.surajrimal.dev";
+
 const marketSuffixes = {
   tse: ".T",
   tokyo: ".T",
@@ -67,15 +69,19 @@ function rangeForInterval(requested) {
 }
 
 async function fetchJson(url, headers = {}) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 12000);
   const response = await fetch(url, {
+    signal: controller.signal,
     headers: {
       "User-Agent": "Mozilla/5.0 ChartLens/1.0",
       "Accept": "application/json,text/plain,*/*",
       ...headers
     }
-  });
+  }).finally(() => clearTimeout(timeout));
   if (!response.ok) throw new Error(`${response.status} from provider`);
-  return response.json();
+  const text = await response.text();
+  return text ? JSON.parse(text) : null;
 }
 
 async function searchYahoo(query, market) {
@@ -101,11 +107,37 @@ async function searchBinance(query) {
   }
 }
 
-function searchNepse(query) {
+function searchNepseLocal(query) {
   const q = String(query).trim().toUpperCase();
   return nepseDirectory
     .filter(item => item.symbol.includes(q) || item.name.toUpperCase().includes(q))
-    .map(item => ({ ...item, provider: "nepse-pending", type: "equity" }));
+    .map(item => ({ ...item, provider: "nepse-unofficial", type: "equity" }));
+}
+
+async function searchNepse(query) {
+  const q = String(query).trim().toUpperCase();
+  try {
+    const list = await fetchJson(`${nepseApiBase}/CompanyList`);
+    const items = normalizeArray(list);
+    const matches = items.filter(item => {
+      const symbol = String(item.symbol || item.companyCode || item.securitySymbol || "").toUpperCase();
+      const name = String(item.companyName || item.securityName || item.name || "").toUpperCase();
+      return symbol.includes(q) || name.includes(q);
+    }).slice(0, 10);
+    if (matches.length) {
+      return matches.map(item => ({
+        symbol: String(item.symbol || item.companyCode || item.securitySymbol || "").toUpperCase(),
+        name: item.companyName || item.securityName || item.name || item.symbol,
+        market: "nepse",
+        exchange: "Nepal Stock Exchange",
+        provider: "nepse-unofficial",
+        type: "equity"
+      }));
+    }
+  } catch {
+    // Hosted unofficial service is best-effort. Fall back to bundled common symbols.
+  }
+  return searchNepseLocal(query);
 }
 
 async function getBinanceCandles(symbol, interval) {
@@ -139,6 +171,71 @@ async function getYahooCandles(symbol, requestedInterval) {
   return candles;
 }
 
+function normalizeArray(payload) {
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload?.data)) return payload.data;
+  if (Array.isArray(payload?.results)) return payload.results;
+  if (Array.isArray(payload?.content)) return payload.content;
+  if (payload && typeof payload === "object") {
+    const firstArray = Object.values(payload).find(Array.isArray);
+    if (firstArray) return firstArray;
+  }
+  return [];
+}
+
+function pickNumber(item, keys) {
+  for (const key of keys) {
+    const value = item?.[key];
+    const number = Number(String(value ?? "").replace(/,/g, ""));
+    if (Number.isFinite(number) && number > 0) return number;
+  }
+  return null;
+}
+
+function pickTime(item, index) {
+  const value = item.businessDate || item.date || item.time || item.x || item.timestamp || item.lastUpdatedDateTime;
+  if (typeof value === "number") return value > 9999999999 ? value : value * 1000;
+  const parsed = Date.parse(String(value || ""));
+  return Number.isFinite(parsed) ? parsed : Date.now() - (index * 86400000);
+}
+
+function parseNepseCandles(payload) {
+  const rows = normalizeArray(payload);
+  return rows.map((item, index) => {
+    const close = pickNumber(item, ["closePrice", "closingPrice", "ltp", "lastTradedPrice", "y"]);
+    const high = pickNumber(item, ["highPrice", "high", "maxPrice"]) || close;
+    const low = pickNumber(item, ["lowPrice", "low", "minPrice"]) || close;
+    const open = pickNumber(item, ["openPrice", "open", "previousClose"]) || close;
+    return {
+      time: pickTime(item, index),
+      open,
+      high,
+      low,
+      close,
+      volume: pickNumber(item, ["totalTradedQuantity", "volume", "quantity", "totalTrades"]) || 0
+    };
+  }).filter(c => [c.open, c.high, c.low, c.close].every(Number.isFinite)).sort((a, b) => a.time - b.time);
+}
+
+async function getNepseCandles(symbol) {
+  const clean = cleanSymbol(symbol);
+  const routes = [
+    `${nepseApiBase}/DailyScripPriceGraph?symbol=${encodeURIComponent(clean)}`,
+    `${nepseApiBase}/PriceVolumeHistory?symbol=${encodeURIComponent(clean)}`
+  ];
+  let lastError;
+  for (const url of routes) {
+    try {
+      const payload = await fetchJson(url);
+      const candles = parseNepseCandles(payload);
+      if (candles.length >= 10) return candles.slice(-180);
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  throw new Error(`NEPSE data unavailable for ${clean}. The unofficial NEPSE API may be offline or rate-limited. ${lastError?.message || ""}`.trim());
+}
+
 export const api = onRequest({ region: "us-central1", cors: true }, async (req, res) => {
   if (req.method === "OPTIONS") return res.status(204).set(jsonHeaders).send("");
   const path = req.path.replace(/^\/api\/?/, "");
@@ -149,7 +246,7 @@ export const api = onRequest({ region: "us-central1", cors: true }, async (req, 
       if (!q) return send(res, 200, { results: await searchBinance("BTC") });
       const results = [
         ...(market === "crypto" || market === "auto" ? await searchBinance(q) : []),
-        ...(market === "nepse" || market === "auto" ? searchNepse(q) : []),
+        ...(market === "nepse" || market === "auto" ? await searchNepse(q) : []),
         ...(market !== "crypto" && market !== "nepse" ? await searchYahoo(q, market) : [])
       ];
       return send(res, 200, { results: results.slice(0, 10) });
@@ -160,8 +257,8 @@ export const api = onRequest({ region: "us-central1", cors: true }, async (req, 
       const market = String(req.query.market || "auto").toLowerCase();
       let symbol = cleanSymbol(req.query.symbol || "BTCUSDT");
       const provider = String(req.query.provider || "auto").toLowerCase();
-      if (market === "nepse") {
-        return send(res, 501, { error: "NEPSE historical candles require a licensed NEPSE/NepseAlpha/SmartWealth provider key. Search and tracking are supported; live chart candles are provider-pending." });
+      if (market === "nepse" || provider === "nepse-unofficial") {
+        return send(res, 200, { meta: { symbol, market: "nepse", provider: "nepse-unofficial", exchange: "Nepal Stock Exchange", interval: "1D", notice: "Unofficial NEPSE data. Educational/non-commercial use only." }, candles: await getNepseCandles(symbol) });
       }
       if (provider === "binance" || isCrypto(symbol, market)) {
         symbol = normalizeCrypto(symbol);

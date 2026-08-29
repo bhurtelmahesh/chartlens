@@ -123,6 +123,16 @@ async function resolveMarket(query, market, intervalValue) {
   }
 
   const symbol = withUsdtFallback(cleaned, preferredMarket);
+  if (preferredMarket === 'nepse') {
+    return {
+      symbol,
+      query: cleaned,
+      name: cleaned || symbol,
+      market: 'nepse',
+      provider: 'nepse-unofficial',
+      interval: '1D'
+    };
+  }
   const provider = preferredMarket === 'crypto' || /USDT$|USDC$|BTC$|ETH$/.test(symbol) ? 'binance' : 'yahoo';
   return {
     symbol: provider === 'binance' ? symbol : applyMarketSuffix(symbol, preferredMarket),
@@ -313,6 +323,7 @@ async function analyzeLiveMarket() {
     els.liveStatus.textContent = `Fetching ${resolved.symbol} candles…`;
     const { candles, meta } = await fetchCandlesForMarket(resolved, intervalValue);
     if (!candles || candles.length < 20) throw new Error(`Not enough candle data for ${resolved.symbol}.`);
+    if (meta.market === 'nepse') els.timeframe.value = '1D';
     const chartMeta = { ...meta, interval: meta.interval || binanceInterval(intervalValue), name: meta.name || resolved.name };
     const dataUrl = renderCandleChart(candles, chartMeta);
     const last = candles[candles.length - 1].close;
