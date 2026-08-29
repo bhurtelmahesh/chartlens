@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="ChartLens turns trading chart screenshots into structured, educational market observations." />
-  <title>ChartLens — Screenshot Market Analysis</title>
+  <meta name="description" content="ChartLens turns chart screenshots or live crypto tickers into structured, educational market observations." />
+  <title>ChartLens — Market Structure Analysis</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -25,11 +25,26 @@
 
   <main>
     <section class="hero" id="hero">
-      <div class="eyebrow"><span>01</span> Screenshot intelligence</div>
+      <div class="eyebrow"><span>01</span> Chart intelligence</div>
       <h1>See the structure.<br><em>Not the noise.</em></h1>
-      <p class="hero-copy">Drop in a chart screenshot. ChartLens reads its visual structure and turns it into a clean, explainable market brief.</p>
+      <p class="hero-copy">Upload a chart screenshot or enter a live crypto ticker. ChartLens turns market structure into a clean, explainable brief.</p>
 
       <div class="workspace-card">
+        <div class="mode-panel live-panel">
+          <div>
+            <span class="mode-kicker">Live market mode</span>
+            <strong>Analyze the current chart now</strong>
+            <p>Enter a crypto pair such as BTCUSDT, ETHUSDT, SOLUSDT, or DOGEUSDT. Candles are fetched from Binance public market data.</p>
+          </div>
+          <button class="live-button" id="liveButton" type="button">
+            <span>Fetch & analyze now</span>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 0 1 13.7-5.7M20 12a8 8 0 0 1-13.7 5.7M18 3v5h-5M6 21v-5h5"/></svg>
+          </button>
+        </div>
+        <p class="live-status" id="liveStatus" role="status" aria-live="polite"></p>
+
+        <div class="section-divider"><span>or analyze a screenshot</span></div>
+
         <div class="upload-zone" id="uploadZone" tabindex="0" role="button" aria-label="Upload chart screenshot">
           <input id="fileInput" type="file" accept="image/png,image/jpeg,image/webp" hidden />
           <div class="upload-icon">
@@ -53,8 +68,8 @@
 
         <div class="metadata-row">
           <label>
-            <span>Symbol <small>optional</small></span>
-            <input id="symbolInput" placeholder="e.g. BTCUSD" maxlength="16" autocomplete="off" />
+            <span>Symbol</span>
+            <input id="symbolInput" placeholder="e.g. BTCUSDT" maxlength="16" autocomplete="off" />
           </label>
           <label>
             <span>Timeframe</span>
@@ -83,7 +98,7 @@
 
       <div class="trust-row">
         <span><svg viewBox="0 0 24 24"><path d="M12 3 5 6v5c0 4.7 2.9 8.5 7 10 4.1-1.5 7-5.3 7-10V6l-7-3Z"/></svg> Runs locally in your browser</span>
-        <span><svg viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></svg> No image stored</span>
+        <span><svg viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></svg> Screenshot mode stores no image</span>
         <span><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5m0-8v.01"/></svg> Educational analysis only</span>
       </div>
     </section>
@@ -117,7 +132,7 @@
 
       <div class="results-grid">
         <article class="chart-panel">
-          <div class="panel-label"><span>Source image</span><small>Locally processed</small></div>
+          <div class="panel-label"><span id="sourceLabel">Source image</span><small id="sourceDetail">Locally processed</small></div>
           <div class="chart-frame">
             <img id="resultImage" alt="Analyzed chart screenshot" />
             <div class="zone zone-resistance"><span>Reaction zone</span></div>
