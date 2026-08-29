@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="styles.css?v=4" />
 </head>
 <body>
   <div class="noise"></div>
@@ -19,6 +19,7 @@
     </a>
     <div class="top-actions">
       <span class="status"><b></b> Analysis engine online</span>
+      <button class="auth-button" id="authButton" type="button">Sign in</button>
       <button class="history-button" id="historyButton" type="button">Recent <span id="historyCount">0</span></button>
     </div>
   </header>
@@ -34,7 +35,7 @@
           <div>
             <span class="mode-kicker">Live market mode</span>
             <strong>Analyze the current chart now</strong>
-            <p>Enter a crypto pair such as BTCUSDT, ETHUSDT, SOLUSDT, or DOGEUSDT. Candles are fetched from Binance public market data.</p>
+            <p>Enter a ticker or company name. ChartLens searches global providers, resolves the symbol, pulls candles, renders the chart, then analyzes it.</p>
           </div>
           <button class="live-button" id="liveButton" type="button">
             <span>Fetch & analyze now</span>
@@ -68,11 +69,22 @@
 
         <div class="metadata-row">
           <label>
-            <span>Symbol</span>
-            <input id="symbolInput" placeholder="e.g. BTCUSDT" maxlength="16" autocomplete="off" />
+            <span>Ticker or company</span>
+            <input id="symbolInput" placeholder="e.g. AAPL, Toyota, NABIL, BTCUSDT" maxlength="48" autocomplete="off" />
           </label>
           <label>
-            <span>Timeframe</span>
+            <span>Market</span>
+            <select id="marketInput">
+              <option value="auto" selected>Auto detect</option>
+              <option value="crypto">Crypto</option>
+              <option value="us">US / NYSE / Nasdaq</option>
+              <option value="tse">Tokyo Stock Exchange</option>
+              <option value="nepse">NEPSE Nepal</option>
+              <option value="global">Other global</option>
+            </select>
+          </label>
+          <label>
+            <span>Interval</span>
             <select id="timeframeInput">
               <option value="15m">15 minutes</option>
               <option value="1h" selected>1 hour</option>
@@ -86,6 +98,7 @@
             <input id="priceInput" type="number" min="0" step="any" placeholder="e.g. 64250" />
           </label>
         </div>
+        <div class="market-results" id="marketResults" hidden></div>
 
         <div class="workspace-footer">
           <button class="demo-button" id="demoButton" type="button">Try a demo chart</button>
@@ -128,6 +141,11 @@
           <h2><span id="resultSymbol">CHART</span> <small>/ <span id="resultTimeframe">1H</span></small></h2>
         </div>
         <button id="newAnalysis" class="new-analysis" type="button">New analysis</button>
+      </div>
+      <div class="result-actions">
+        <button id="favoriteButton" type="button">Save favorite</button>
+        <button id="trackerButton" type="button">Start tracker</button>
+        <span id="saveStatus" role="status" aria-live="polite"></span>
       </div>
 
       <div class="results-grid">
@@ -187,11 +205,47 @@
 
   <aside class="history-drawer" id="historyDrawer" aria-hidden="true">
     <div class="drawer-head"><h3>Recent analyses</h3><button id="closeHistory" type="button">×</button></div>
-    <div id="historyList" class="history-list"></div>
+    <div class="drawer-section">
+      <h4>Analyses</h4>
+      <div id="historyList" class="history-list"></div>
+    </div>
+    <div class="drawer-section">
+      <h4>Favorites</h4>
+      <div id="favoritesList" class="history-list"></div>
+    </div>
+    <div class="drawer-section">
+      <h4>Trackers</h4>
+      <div id="trackersList" class="history-list"></div>
+    </div>
   </aside>
   <div class="drawer-backdrop" id="drawerBackdrop" hidden></div>
 
+  <div class="auth-modal" id="authModal" hidden>
+    <div class="auth-card">
+      <button class="auth-close" id="authClose" type="button" aria-label="Close sign in">×</button>
+      <span class="mode-kicker">Optional account</span>
+      <h2>Save your ChartLens workspace</h2>
+      <p>Sign up or log in to sync analyses, favorites, and trackers with Firebase. If Firebase is not configured yet, ChartLens keeps everything locally on this device.</p>
+      <label>
+        <span>Email</span>
+        <input id="authEmail" type="email" placeholder="you@example.com" autocomplete="email" />
+      </label>
+      <label>
+        <span>Password</span>
+        <input id="authPassword" type="password" placeholder="Minimum 6 characters" autocomplete="current-password" />
+      </label>
+      <div class="auth-actions">
+        <button id="loginButton" type="button">Log in</button>
+        <button id="signupButton" type="button">Sign up</button>
+      </div>
+      <button class="guest-button" id="logoutButton" type="button">Continue / sign out</button>
+      <p class="auth-status" id="authStatus" role="status" aria-live="polite"></p>
+    </div>
+  </div>
+
   <canvas id="analysisCanvas" hidden></canvas>
-  <script src="app.js"></script>
+  <script>window.CHARTLENS_FIREBASE_CONFIG = window.CHARTLENS_FIREBASE_CONFIG || null;</script>
+  <script src="firebase-config.js?v=4"></script>
+  <script src="app.js?v=4"></script>
 </body>
 </html>

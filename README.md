@@ -1,14 +1,24 @@
 # ChartLens
 
-ChartLens is a static MVP for reading a trading chart screenshot or live crypto ticker and turning it into a simple visual market-structure brief.
+ChartLens is a market-structure analysis app for reading chart screenshots or live ticker candles and turning them into simple visual briefs.
 
 It runs fully in the browser:
 
-- Enter a Binance crypto pair and interval to fetch the current chart.
+- Enter a ticker or company name and interval to fetch the current chart.
 - Upload a chart screenshot or generate a demo chart.
 - Run a local pixel-structure scan.
 - Get a directional/balanced bias, confidence score, image metrics, observations, and upside/downside scenarios.
-- Store recent analyses in browser local storage.
+- Save recent analyses, favorites, and active trackers locally or to Firebase after sign-in.
+
+## Market data coverage
+
+ChartLens uses provider routing:
+
+- Crypto pairs: Binance public candles.
+- US / NYSE / Nasdaq, Tokyo Stock Exchange, and many global exchanges: Yahoo Finance chart/search through Firebase Functions.
+- NEPSE: modeled in the UI/search layer, but historical candle support needs a licensed NEPSE/NepseAlpha/SmartWealth-style provider key before production deployment.
+
+For reliable live charts, deploy the Firebase Function so `/api/search` and `/api/candles` can proxy provider data server-side. Screenshot/demo analysis works without any backend.
 
 ## Run locally
 
@@ -30,9 +40,12 @@ Live market mode uses Binance public candle data and currently works best with c
 
 ## Firebase Hosting
 
-This repo includes a Firebase Hosting config. After creating a Firebase project, connect it with:
+This repo includes Firebase Hosting and Functions config. After creating a Firebase project, connect it with:
 
 ```bash
+npm --prefix functions install
 firebase use --add
 firebase deploy
 ```
+
+For login/signup and cloud sync, replace `firebase-config.js` with your Firebase web app config. Keep `firebase-config.example.js` as the template.
