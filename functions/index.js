@@ -8,6 +8,7 @@ const jsonHeaders = {
 };
 
 const nepseApiBase = process.env.NEPSE_API_BASE || "https://nepseapi.surajrimal.dev";
+const shareBazaarBase = process.env.SHAREBAZAAR_API_BASE || "https://nepsetty.kokomo.workers.dev";
 
 const marketSuffixes = {
   tse: ".T",
@@ -116,6 +117,24 @@ function searchNepseLocal(query) {
 
 async function searchNepse(query) {
   const q = String(query).trim().toUpperCase();
+  const localMatches = searchNepseLocal(query);
+  try {
+    const quote = await getShareBazaarQuote(q);
+    if (quote?.symbol) {
+      return [{
+        symbol: quote.symbol,
+        name: quote.company_name || quote.name || quote.symbol,
+        market: "nepse",
+        exchange: "Nepal Stock Exchange",
+        provider: "nepse-unofficial",
+        type: "equity",
+        lastPrice: quote.ltp || quote.current_price || null,
+        lastUpdated: quote.last_updated || null
+      }, ...localMatches.filter(item => item.symbol !== quote.symbol)].slice(0, 10);
+    }
+  } catch {
+    // ShareBazaar is current-quote only and best-effort.
+  }
   try {
     const list = await fetchJson(`${nepseApiBase}/CompanyList`);
     const items = normalizeArray(list);
@@ -137,7 +156,7 @@ async function searchNepse(query) {
   } catch {
     // Hosted unofficial service is best-effort. Fall back to bundled common symbols.
   }
-  return searchNepseLocal(query);
+  return localMatches;
 }
 
 async function getBinanceCandles(symbol, interval) {
@@ -233,7 +252,21 @@ async function getNepseCandles(symbol) {
       lastError = error;
     }
   }
+  try {
+    const quote = await getShareBazaarQuote(clean);
+    if (quote?.ltp) {
+      throw new Error(`NEPSE historical candles are unavailable for ${clean}, but latest ShareBazaar quote is ${quote.ltp}. The chart API may be offline or rate-limited.`);
+    }
+  } catch (quoteError) {
+    if (String(quoteError.message || "").includes("latest ShareBazaar quote")) throw quoteError;
+  }
   throw new Error(`NEPSE data unavailable for ${clean}. The unofficial NEPSE API may be offline or rate-limited. ${lastError?.message || ""}`.trim());
+}
+
+async function getShareBazaarQuote(symbol) {
+  const clean = cleanSymbol(symbol);
+  if (!clean) return null;
+  return fetchJson(`${shareBazaarBase}/api/stock?symbol=${encodeURIComponent(clean)}`);
 }
 
 export const api = onRequest({ region: "us-central1", cors: true }, async (req, res) => {

@@ -16,11 +16,18 @@ ChartLens uses provider routing:
 
 - Crypto pairs: Binance public candles.
 - US / NYSE / Nasdaq, Tokyo Stock Exchange, and many global exchanges: Yahoo Finance chart/search through Firebase Functions.
-- NEPSE: best-effort daily chart support through the unofficial `surajrimal07/NepseAPI-Unofficial` API, with clear educational/non-commercial-use limitations.
+- NEPSE: best-effort daily chart support through the unofficial `surajrimal07/NepseAPI-Unofficial` API, with fast latest-price fallback from `nepsetty.kokomo.workers.dev`.
 
 For reliable live charts, deploy the Firebase Function so `/api/search` and `/api/candles` can proxy provider data server-side. Screenshot/demo analysis works without any backend.
 
-NEPSE provider note: the default Function config points at `https://nepseapi.surajrimal.dev`, which the upstream project describes as a free, unreliable, educational-only hosted service. For a real production app, run your own instance or use an official/licensed NEPSE data provider, then set `NEPSE_API_BASE` in Firebase Functions.
+NEPSE provider note:
+
+- `NEPSE_API_BASE` defaults to `https://nepseapi.surajrimal.dev` for historical/daily chart routes.
+- `SHAREBAZAAR_API_BASE` defaults to `https://nepsetty.kokomo.workers.dev` for latest quote fallback.
+- The Python `nepse-api` package was not added because this app uses Node/Firebase Functions.
+- `Prabesh01/nepalstock-api` was not added because its README describes bypassing NepalStock authorization, which is not a good default for this app.
+
+For a real production app, run your own reliable NEPSE API instance or use an official/licensed provider.
 
 ## Run locally
 
