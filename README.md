@@ -65,10 +65,12 @@ Deploy the Firebase backend config and app with:
 
 ```bash
 npm --prefix functions install
-npx -y firebase-tools@latest deploy --only auth,firestore,hosting,functions
+npx -y firebase-tools@latest deploy --only firestore,hosting
 ```
 
-Firebase Functions require the Firebase project to be on the Blaze plan. Without Functions, static hosting, Firebase Auth, Firestore sync, screenshot analysis, demo analysis, and direct Binance crypto fallback can still work, but the `/api` market-data routes for broader equities/exchanges need a proxy.
+Firebase Auth providers are already enabled in project `chartlens101`. Keep Auth support-email/provider administration in the Firebase Console or a private local config, not in the public repo.
+
+Firebase Functions require the Firebase project to be on the Blaze plan. ChartLens uses the Cloudflare Worker proxy below instead, so Firebase can stay focused on Hosting, Auth, and Firestore.
 
 To avoid Blaze for market data, use a free-tier proxy such as Cloudflare Workers and set `window.CHARTLENS_API_BASE` to that Worker URL before `app.js` loads. Firestore remains the single database either way.
 
