@@ -72,6 +72,18 @@ Firebase Functions require the Firebase project to be on the Blaze plan. Without
 
 To avoid Blaze for market data, use a free-tier proxy such as Cloudflare Workers and set `window.CHARTLENS_API_BASE` to that Worker URL before `app.js` loads. Firestore remains the single database either way.
 
+## Free market-data proxy option
+
+A Cloudflare Worker proxy is included in `workers/market-proxy`. It mirrors the Firebase Function `/api/search` and `/api/candles` routes.
+
+```bash
+cd workers/market-proxy
+npx -y wrangler@latest login
+npx -y wrangler@latest deploy
+```
+
+After deployment, set `window.CHARTLENS_API_BASE` to the Worker URL. Keep Firebase Auth and Firestore on `chartlens101`.
+
 For local testing, run:
 
 ```bash

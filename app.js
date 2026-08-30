@@ -33,6 +33,11 @@ const state = {
 const apiBase = window.CHARTLENS_API_BASE || '';
 const firebaseConfig = window.CHARTLENS_FIREBASE_CONFIG;
 
+const knownMarketAliases = {
+  'KIOXIA': { symbol: '285A.T', name: 'Kioxia Holdings Corporation', market: 'tse', provider: 'yahoo', exchange: 'Tokyo Stock Exchange' },
+  'KIOXIA.T': { symbol: '285A.T', name: 'Kioxia Holdings Corporation', market: 'tse', provider: 'yahoo', exchange: 'Tokyo Stock Exchange' }
+};
+
 function formatBytes(bytes) {
   return bytes > 1024 * 1024 ? `${(bytes / 1024 / 1024).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`;
 }
@@ -106,6 +111,16 @@ function parseYahooCandles(result) {
 async function resolveMarket(query, market, intervalValue) {
   const cleaned = query.trim();
   const preferredMarket = market || 'auto';
+  const aliased = knownMarketAliases[cleaned.toUpperCase()];
+  if (aliased && (preferredMarket === 'auto' || preferredMarket === 'tse' || preferredMarket === 'global')) {
+    els.marketResults.hidden = false;
+    els.marketResults.innerHTML = `
+      <button type="button" data-symbol="${aliased.symbol}" data-market="${aliased.market}" data-name="${aliased.name}" data-provider="${aliased.provider}">
+        <strong>${aliased.symbol}</strong><span>${aliased.name} · ${aliased.exchange}</span>
+      </button>
+    `;
+    return { ...aliased, interval: yahooInterval(intervalValue) };
+  }
 
   try {
     const data = await fetchJson(endpoint('/api/search', { q: cleaned, market: preferredMarket }));

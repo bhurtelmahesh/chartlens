@@ -1,0 +1,7 @@
+name = "chartlens-market-proxy"
+main = "src/index.js"
+compatibility_date = "2026-08-30"
+
+[vars]
+NEPSE_API_BASE = "https://nepseapi.surajrimal.dev"
+SHAREBAZAAR_API_BASE = "https://nepsetty.kokomo.workers.dev"
