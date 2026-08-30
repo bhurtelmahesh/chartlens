@@ -60,6 +60,7 @@ The registered Firebase Web App is `chartlens-web`, and `firebase-config.js` con
 
 - Firebase Authentication for optional Email/password login and Google Sign-in.
 - Cloud Firestore for owner-private workspace sync: analyses, favorites, and trackers under `users/{uid}/workspace/*`.
+- A small SVG favicon and web manifest for browser tabs/install metadata.
 
 Deploy the Firebase backend config and app with:
 
