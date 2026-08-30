@@ -521,6 +521,30 @@ async function persistCollection(collection, items) {
   await setDoc(doc(state.firebase.db, 'users', state.user.uid, 'workspace', collection), { items, updatedAt: new Date().toISOString() });
 }
 
+const WORKSPACE_KEYS = { analyses: 'id', favorites: 'favoriteId', trackers: 'trackerId' };
+
+function itemKey(item, keyField) {
+  return item?.[keyField] || `${item?.symbol || '?'}-${item?.timeframe || '?'}`;
+}
+
+function itemTime(item) {
+  return Date.parse(item?.date || item?.lastCheckedAt || item?.updatedAt || '') || 0;
+}
+
+// Union local and cloud records by their stable id, keeping whichever copy is
+// newer when both sides have the same key. Newest first, capped at 50 to match
+// persistCollection() and the Firestore rules.
+function mergeById(local = [], cloud = [], keyField = 'id') {
+  const merged = new Map();
+  for (const item of [...cloud, ...local]) {
+    if (!item || typeof item !== 'object') continue;
+    const key = itemKey(item, keyField);
+    const existing = merged.get(key);
+    if (!existing || itemTime(item) >= itemTime(existing)) merged.set(key, item);
+  }
+  return [...merged.values()].sort((a, b) => itemTime(b) - itemTime(a)).slice(0, 50);
+}
+
 async function saveAnalysis(item) {
   const analyses = [item, ...state.workspace.analyses.filter(existing => existing.id !== item.id)].slice(0, 50);
   await persistCollection('analyses', analyses);
@@ -625,14 +649,23 @@ async function signInWithGoogle() {
 async function loadCloudWorkspace() {
   if (!state.firebase.enabled || !state.user) return;
   const { doc, getDoc, setDoc } = state.firebase.api;
+  let mergedCount = 0;
   for (const collection of ['analyses', 'favorites', 'trackers']) {
     const ref = doc(state.firebase.db, 'users', state.user.uid, 'workspace', collection);
     const snap = await getDoc(ref);
-    if (snap.exists()) {
-      state.workspace[collection] = snap.data().items || [];
-    } else {
-      await setDoc(ref, { items: state.workspace[collection], updatedAt: new Date().toISOString() });
+    const localItems = Array.isArray(state.workspace[collection]) ? state.workspace[collection] : [];
+    const cloudItems = snap.exists() ? (snap.data().items || []) : [];
+    const merged = mergeById(localItems, cloudItems, WORKSPACE_KEYS[collection]);
+    state.workspace[collection] = merged;
+    localWrite(`chartlens-${collection}`, merged);
+    // Only write back when the merge actually changed the cloud copy.
+    if (JSON.stringify(merged) !== JSON.stringify(cloudItems)) {
+      mergedCount += Math.max(0, merged.length - cloudItems.length);
+      await setDoc(ref, { items: merged, updatedAt: new Date().toISOString() });
     }
+  }
+  if (mergedCount > 0) {
+    els.authStatus.textContent = `Synced: merged ${mergedCount} local item${mergedCount === 1 ? '' : 's'} with your cloud workspace.`;
   }
 }
 
