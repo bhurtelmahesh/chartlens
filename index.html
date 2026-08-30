@@ -12,7 +12,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=9" />
+  <link rel="stylesheet" href="styles.css?v=10" />
 </head>
 <body>
   <div class="noise"></div>
@@ -157,9 +157,9 @@
         <div class="eyebrow"><span>02</span> Visual processing</div>
         <h2>Reading market structure…</h2>
         <ul id="processSteps">
-          <li class="active">Mapping high-contrast price regions</li>
+          <li class="active">Reading price and volume</li>
           <li>Estimating trend and structure</li>
-          <li>Locating reaction zones</li>
+          <li>Marking swing levels</li>
           <li>Building an explainable brief</li>
         </ul>
       </div>
@@ -184,8 +184,6 @@
           <div class="panel-label"><span id="sourceLabel">Source image</span><small id="sourceDetail">Locally processed</small></div>
           <div class="chart-frame">
             <img id="resultImage" alt="Analyzed chart screenshot" />
-            <div class="zone zone-resistance"><span id="zoneResistanceLabel">Reaction zone</span></div>
-            <div class="zone zone-support"><span id="zoneSupportLabel">Support zone</span></div>
           </div>
           <div class="image-stats">
             <span id="imageDimensions">—</span>
@@ -285,6 +283,6 @@
   <canvas id="analysisCanvas" hidden></canvas>
   <script src="env.js?v=1"></script>
   <script src="firebase-config.js?v=6"></script>
-  <script src="app.js?v=9"></script>
+  <script src="app.js?v=10"></script>
 </body>
 </html>

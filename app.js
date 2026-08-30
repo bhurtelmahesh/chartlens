@@ -14,7 +14,7 @@ const els = {
   resultImage: $('#resultImage'), resultSymbol: $('#resultSymbol'), resultTimeframe: $('#resultTimeframe'),
   sourceLabel: $('#sourceLabel'), sourceDetail: $('#sourceDetail'), dimensions: $('#imageDimensions'), edgeDensity: $('#edgeDensity'), analysisTime: $('#analysisTime'), dataNotice: $('#dataNotice'),
   confidenceLabel: $('#confidenceLabel'), confidenceBar: $('#confidenceBar'), biasTitle: $('#biasTitle'), methodNote: $('#methodNote'),
-  briefKind: $('#briefKind'), briefHead: $('#briefHead'), zoneResistance: $('#zoneResistanceLabel'), zoneSupport: $('#zoneSupportLabel'),
+  briefKind: $('#briefKind'), briefHead: $('#briefHead'),
   biasSummary: $('#biasSummary'), biasOrb: $('#biasOrb'), biasArrow: $('#biasArrow'), observations: $('#observations'),
   bullScenario: $('#bullScenario'), bearScenario: $('#bearScenario'), newAnalysis: $('#newAnalysis'),
   favoriteButton: $('#favoriteButton'), trackerButton: $('#trackerButton'), saveStatus: $('#saveStatus'),
@@ -280,12 +280,65 @@ function renderCandleChart(candles, meta) {
     ctx.fillRect(x - Math.max(2, xStep * .28), canvas.height - pad.bottom + 54 - volH, Math.max(3, xStep * .56), volH);
   });
 
+  const xAt = index => pad.left + index * xStep + xStep / 2;
+
+  // Label with an opaque backing so text stays readable over candles.
+  const tag = (text, x, y, color, { align = 'left', weight = '' } = {}) => {
+    ctx.font = `${weight} 15px monospace`.trim();
+    const w = ctx.measureText(text).width;
+    const bx = align === 'right' ? x - w - 12 : x;
+    ctx.fillStyle = 'rgba(7,11,15,.92)';
+    ctx.fillRect(bx, y - 13, w + 12, 19);
+    ctx.strokeStyle = 'rgba(255,255,255,.06)'; ctx.lineWidth = 1;
+    ctx.strokeRect(bx + .5, y - 12.5, w + 11, 18);
+    ctx.fillStyle = color;
+    ctx.textBaseline = 'alphabetic';
+    ctx.fillText(text, bx + 6, y + 1);
+  };
+
+  // EMA overlay — the line behind the "EMA slope" figure in the brief.
+  const emaPeriod = emaPeriodFor(candles.length);
+  const emaSeries = ema(candles.map(c => c.close), emaPeriod);
+  ctx.strokeStyle = '#f0b429'; ctx.lineWidth = 2; ctx.globalAlpha = .9;
+  ctx.beginPath();
+  emaSeries.forEach((v, i) => { const y = yFor(v); i ? ctx.lineTo(xAt(i), y) : ctx.moveTo(xAt(i), y); });
+  ctx.stroke(); ctx.globalAlpha = 1;
+
+  // Swing high / low — drawn at their real price, not a fixed screen position.
+  const { swingHigh, swingLow } = lastSwings(candles);
+  const drawLevel = (pt, color, text) => {
+    if (!pt || !Number.isFinite(pt.price)) return;
+    const y = yFor(pt.price);
+    ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = 1;
+    ctx.setLineDash([7, 6]);
+    ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(canvas.width - pad.right, y); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.beginPath(); ctx.arc(xAt(pt.i), y, 3.5, 0, Math.PI * 2); ctx.fill();
+    tag(`${text} ${nicePrice(pt.price)}`, pad.left, y - 5, color);
+  };
+  drawLevel(swingHigh, '#ff6b5f', 'Swing high');
+  drawLevel(swingLow, '#64d9d2', 'Swing low');
+  // EMA label near the left end of its own line, clear of the swing labels.
+  tag(`EMA ${emaPeriod}`, xAt(Math.round(candles.length * 0.12)), yFor(emaSeries[Math.round(candles.length * 0.12)]) - 8, '#f0b429');
+
+  // The user's own reference price, if they typed one that sits on the chart.
+  if (Number.isFinite(meta.refPrice) && meta.refPrice >= min && meta.refPrice <= max && Math.abs(meta.refPrice - last.close) / last.close > 0.001) {
+    const y = yFor(meta.refPrice);
+    ctx.strokeStyle = '#9ba6ad'; ctx.lineWidth = 1;
+    ctx.setLineDash([2, 4]);
+    ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(canvas.width - pad.right, y); ctx.stroke();
+    ctx.setLineDash([]);
+    tag(`Your ref ${nicePrice(meta.refPrice)}`, canvas.width - pad.right - 4, y - 5, '#c8cfd4', { align: 'right' });
+  }
+
   const label = `${meta.symbol} · ${(meta.intervalLabel || meta.interval || '').toUpperCase()}`;
+  ctx.textBaseline = 'alphabetic';
   ctx.fillStyle = '#eef2ea'; ctx.font = '700 26px monospace'; ctx.fillText(label, pad.left, 42);
   ctx.fillStyle = '#9ba6ad'; ctx.font = '16px monospace'; ctx.fillText(`${meta.name || meta.exchange || 'Live market'} · Last ${nicePrice(last.close)}`, pad.left, 66);
-  ctx.fillStyle = last.close >= candles[0].open ? '#b9f227' : '#ff6b5f';
+  const lastColor = last.close >= candles[0].open ? '#b9f227' : '#ff6b5f';
+  ctx.fillStyle = lastColor;
   ctx.font = '700 20px monospace'; ctx.fillText(nicePrice(last.close), canvas.width - pad.right + 28, yFor(last.close) + 7);
-  ctx.strokeStyle = ctx.fillStyle; ctx.setLineDash([8, 8]); ctx.beginPath(); ctx.moveTo(pad.left, yFor(last.close)); ctx.lineTo(canvas.width - pad.right + 18, yFor(last.close)); ctx.stroke(); ctx.setLineDash([]);
+  ctx.strokeStyle = lastColor; ctx.setLineDash([8, 8]); ctx.beginPath(); ctx.moveTo(pad.left, yFor(last.close)); ctx.lineTo(canvas.width - pad.right + 18, yFor(last.close)); ctx.stroke(); ctx.setLineDash([]);
   return canvas.toDataURL('image/png');
 }
 
@@ -378,7 +431,8 @@ async function analyzeLiveMarket() {
     if (!candles || candles.length < 20) throw new Error(`Not enough candle data for ${resolved.symbol}.`);
     if (meta.market === 'nepse') els.timeframe.value = '1D';
     if (meta.notice && meta.interval === '1d') els.timeframe.value = '1D';
-    const chartMeta = { ...meta, interval: meta.interval || binanceInterval(intervalValue), intervalLabel: intervalValue, name: meta.name || resolved.name };
+    const typedRef = parseFloat(els.price.value);
+    const chartMeta = { ...meta, interval: meta.interval || binanceInterval(intervalValue), intervalLabel: intervalValue, name: meta.name || resolved.name, refPrice: Number.isFinite(typedRef) && typedRef > 0 ? typedRef : null };
     state.liveCandles = candles;
     setLiveProgress(62, 'Rendering chart locally');
     const dataUrl = renderCandleChart(candles, chartMeta);
@@ -486,6 +540,20 @@ function swingPoints(candles, k = 3) {
   return { highs, lows };
 }
 
+// Most recent confirmed swing pivots — the same levels analyzeCandles reports
+// and renderCandleChart draws, so the chart and the brief always agree.
+function lastSwings(candles) {
+  const { highs, lows } = swingPoints(candles);
+  return {
+    swingHigh: highs.length ? highs[highs.length - 1] : { i: candles.length - 1, price: Math.max(...candles.map(c => c.high)) },
+    swingLow: lows.length ? lows[lows.length - 1] : { i: candles.length - 1, price: Math.min(...candles.map(c => c.low)) }
+  };
+}
+
+function emaPeriodFor(count) {
+  return Math.max(5, Math.min(20, Math.floor(count / 3)));
+}
+
 // Trend read computed directly from the OHLC series (live mode), rather than
 // slope-detecting a picture of it: EMA slope + swing structure + break of
 // structure, with an honest 0-100 confidence.
@@ -495,7 +563,7 @@ function analyzeCandles(candles) {
   candles = candles.filter(c => [c.open, c.high, c.low, c.close].every(v => Number.isFinite(v) && v > 0));
   const closes = candles.map(c => c.close);
   const n = closes.length;
-  const period = Math.max(5, Math.min(20, Math.floor(n / 3)));
+  const period = emaPeriodFor(n);
   const emaSeries = ema(closes, period);
   const look = Math.min(period, n - 1);
   const emaNow = emaSeries[n - 1];
@@ -623,8 +691,6 @@ function renderResults(m, elapsed) {
     : 'Visual slope of screenshot pixels — a coarse heuristic, not a structural read.';
   els.briefKind.textContent = candle ? 'Candle structure' : 'Visual heuristic';
   els.briefHead.textContent = candle ? 'What the candles suggest' : 'What the image suggests';
-  els.zoneResistance.textContent = candle ? `Swing high ≈ ${nicePrice(m.lastSwingHigh)}` : 'Reaction zone';
-  els.zoneSupport.textContent = candle ? `Swing low ≈ ${nicePrice(m.lastSwingLow)}` : 'Support zone';
 
   const screenshotCopy = {
     bullish: {
