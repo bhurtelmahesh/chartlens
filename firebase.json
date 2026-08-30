@@ -9,6 +9,7 @@
     "predeploy": ["node scripts/sync-shared.mjs"]
   },
   "hosting": {
+    "site": "chartlens101",
     "public": ".",
     "ignore": [
       "**/.*",
