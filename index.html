@@ -5,13 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="description" content="ChartLens turns chart screenshots or live tickers into structured, educational market observations." />
   <meta name="theme-color" content="#0a0d0b" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' https://www.gstatic.com https://apis.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://chartlens-market-proxy.chartlens101.workers.dev https://api.binance.com https://*.googleapis.com https://accounts.google.com wss://*.googleapis.com; frame-src https://chartlens101.firebaseapp.com https://accounts.google.com" />
   <title>ChartLens — Market Structure Analysis</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml" />
   <link rel="manifest" href="site.webmanifest" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=7" />
+  <link rel="stylesheet" href="styles.css?v=8" />
 </head>
 <body>
   <div class="noise"></div>
@@ -38,7 +39,7 @@
           <div class="live-copy">
             <span class="mode-kicker">Live market mode</span>
             <strong>Analyze the current chart now</strong>
-            <p>Enter a ticker or company name. ChartLens calls a market-data proxy, renders a chart in your browser, then runs a visual structure scan.</p>
+            <p>Enter a ticker or company name. ChartLens calls a market-data proxy, renders a chart in your browser, then reads trend and structure directly from the candle data.</p>
           </div>
           <div class="live-actions">
             <div class="metadata-row live-metadata">
@@ -129,7 +130,7 @@
       <section class="trust-scaffold" aria-label="ChartLens trust and methodology summary">
         <article>
           <span>How it works</span>
-          <p>Screenshot mode uses browser canvas/pixel heuristics. Live mode fetches candles through Cloudflare, draws the chart locally, then applies the same visual scan.</p>
+          <p>Screenshot mode uses browser canvas/pixel heuristics on the uploaded image. Live mode fetches candles through the proxy and computes the read directly from the OHLC series — EMA slope, swing highs/lows, and break of structure.</p>
         </article>
         <article>
           <span>Data integrity</span>
@@ -157,7 +158,7 @@
         <h2>Reading market structure…</h2>
         <ul id="processSteps">
           <li class="active">Mapping high-contrast price regions</li>
-          <li>Estimating directional slope</li>
+          <li>Estimating trend and structure</li>
           <li>Locating reaction zones</li>
           <li>Building an explainable brief</li>
         </ul>
@@ -183,14 +184,15 @@
           <div class="panel-label"><span id="sourceLabel">Source image</span><small id="sourceDetail">Locally processed</small></div>
           <div class="chart-frame">
             <img id="resultImage" alt="Analyzed chart screenshot" />
-            <div class="zone zone-resistance"><span>Reaction zone</span></div>
-            <div class="zone zone-support"><span>Support zone</span></div>
+            <div class="zone zone-resistance"><span id="zoneResistanceLabel">Reaction zone</span></div>
+            <div class="zone zone-support"><span id="zoneSupportLabel">Support zone</span></div>
           </div>
           <div class="image-stats">
             <span id="imageDimensions">—</span>
             <span id="edgeDensity">—</span>
             <span id="analysisTime">—</span>
           </div>
+          <p class="data-notice" id="dataNotice" hidden></p>
         </article>
 
         <div class="brief-column">
@@ -201,10 +203,11 @@
               <div><h3 id="biasTitle">—</h3><p id="biasSummary">—</p></div>
             </div>
             <div class="confidence-track"><i id="confidenceBar"></i></div>
+            <p class="method-note" id="methodNote"></p>
           </article>
 
           <article class="observation-card">
-            <div class="panel-label"><span>What the image suggests</span><small>Visual heuristic</small></div>
+            <div class="panel-label"><span id="briefHead">What the image suggests</span><small id="briefKind">Visual heuristic</small></div>
             <ul id="observations"></ul>
           </article>
 
@@ -280,11 +283,8 @@
   </div>
 
   <canvas id="analysisCanvas" hidden></canvas>
-  <script>
-    window.CHARTLENS_FIREBASE_CONFIG = window.CHARTLENS_FIREBASE_CONFIG || null;
-    window.CHARTLENS_API_BASE = window.CHARTLENS_API_BASE || 'https://chartlens-market-proxy.chartlens101.workers.dev';
-  </script>
-  <script src="firebase-config.js?v=5"></script>
-  <script src="app.js?v=7"></script>
+  <script src="env.js?v=1"></script>
+  <script src="firebase-config.js?v=6"></script>
+  <script src="app.js?v=8"></script>
 </body>
 </html>
