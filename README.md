@@ -2,7 +2,7 @@
 
 ChartLens is a market-structure analysis app for reading chart screenshots or live ticker candles and turning them into simple visual briefs.
 
-It runs fully in the browser:
+The chart rendering and visual scan run in the browser. Live market lookup uses a Cloudflare Worker market-data proxy, and optional account sync uses Firebase Auth + Firestore:
 
 - Enter a ticker or company name and interval to fetch the current chart.
 - Upload a chart screenshot or generate a demo chart.
@@ -15,10 +15,10 @@ It runs fully in the browser:
 ChartLens uses provider routing:
 
 - Crypto pairs: Binance public candles.
-- US / NYSE / Nasdaq, Tokyo Stock Exchange, and many global exchanges: Yahoo Finance chart/search through Firebase Functions.
+- US / NYSE / Nasdaq, Tokyo Stock Exchange, and many global exchanges: Yahoo Finance chart/search through the Cloudflare Worker proxy.
 - NEPSE: best-effort daily chart support through the unofficial `surajrimal07/NepseAPI-Unofficial` API, with fast latest-price fallback from `nepsetty.kokomo.workers.dev`.
 
-For reliable live charts, deploy the Firebase Function so `/api/search` and `/api/candles` can proxy provider data server-side. Screenshot/demo analysis works without any backend.
+For reliable live charts, deploy the Cloudflare Worker so `/api/search` and `/api/candles` can proxy provider data server-side. Screenshot/demo analysis works without any backend.
 
 NEPSE provider note:
 
@@ -43,9 +43,9 @@ http://127.0.0.1:4173/
 
 ## Important
 
-This is educational software, not a trading signal. Screenshot analysis can miss live data, labels, indicators, and wider market context.
+This is educational software, not a trading signal or personalized advice. Screenshot analysis can miss live data, labels, indicators, and wider market context. Live market data may be delayed, stale, incomplete, provider-limited, or unavailable.
 
-Live market mode uses Binance public candle data and currently works best with crypto pairs such as `BTCUSDT`, `ETHUSDT`, `SOLUSDT`, and `DOGEUSDT`.
+Live market mode supports `1m`, `5m`, `15m`, `1h`, `4h`, `1D`, and `1W` where the selected provider supports that interval. NEPSE is daily-only in the current build because the community sources are daily/latest-price oriented.
 
 ## Firebase Hosting
 

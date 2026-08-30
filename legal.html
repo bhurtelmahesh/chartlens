@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0a0d0b" />
+  <title>ChartLens — Methodology, Privacy, Risk, Terms</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+  <link rel="manifest" href="site.webmanifest" />
+  <link rel="stylesheet" href="styles.css?v=7" />
+</head>
+<body>
+  <div class="noise"></div>
+  <header class="topbar">
+    <a class="brand" href="index.html" aria-label="ChartLens home">
+      <span class="brand-mark"><i></i><i></i><i></i></span>
+      <span>CHARTLENS</span>
+    </a>
+    <div class="top-actions"><a class="history-button" href="index.html">Back to app</a></div>
+  </header>
+
+  <main class="legal-page">
+    <div class="eyebrow"><span>00</span> Trust center</div>
+    <h1>Clear limits.<br><em>Cleaner trust.</em></h1>
+
+    <section id="methodology" class="legal-section">
+      <h2>Methodology</h2>
+      <p>ChartLens is an educational market-structure tool. It does not place trades, connect to a brokerage, manage money, or provide personalized financial advice.</p>
+      <p>Screenshot mode processes the uploaded image in the browser using canvas/pixel heuristics. It looks for high-contrast structure, left-to-right slope, and approximate reaction zones. The screenshot is not uploaded by the current app.</p>
+      <p>Live mode sends ticker, market, interval, and provider parameters to the ChartLens Cloudflare Worker market-data proxy. The Worker fetches candle data from external market-data providers, returns normalized candles, and the browser renders the chart image locally before running the same visual scan.</p>
+      <p>The generated brief is a visual heuristic. It is not a prediction, recommendation, rating, research report, investment advisory service, or guarantee of future price movement.</p>
+    </section>
+
+    <section id="privacy" class="legal-section">
+      <h2>Privacy</h2>
+      <p>Without login, workspace data is stored locally in your browser. With login, analyses, favorites, and trackers are saved to Firebase Firestore under your authenticated user ID.</p>
+      <p>Firebase Authentication is used for Email/password and Google Sign-in. Google authentication is optional; Email/password is available as a fallback.</p>
+      <p>Screenshot mode does not upload the selected image in the current implementation. Live ticker mode sends market lookup parameters to the Cloudflare Worker and external market-data sources may receive request metadata from the proxy.</p>
+      <p>Do not upload screenshots containing account numbers, balances, personal identifiers, broker names, order IDs, or other sensitive information.</p>
+    </section>
+
+    <section id="risk" class="legal-section">
+      <h2>Risk disclosure</h2>
+      <p>Financial markets are risky. Stocks, cryptoassets, derivatives, and foreign markets can move quickly, gap, halt, become illiquid, or produce losses greater than expected.</p>
+      <p>Market data may be delayed, stale, incomplete, incorrect, adjusted, or unavailable. NEPSE support is experimental and relies on unofficial/community sources; verify independently against official exchange or broker data before relying on it.</p>
+      <p>ChartLens does not know your financial position, objectives, jurisdiction, tax situation, risk tolerance, or legal restrictions. You are responsible for your own decisions and compliance obligations.</p>
+    </section>
+
+    <section id="terms" class="legal-section">
+      <h2>Terms</h2>
+      <p>Use ChartLens only as an educational research aid. Do not treat its output as financial, legal, tax, or investment advice.</p>
+      <p>You are responsible for verifying all market data and analysis before acting. ChartLens is provided as-is during beta and may change, fail, or return inaccurate observations.</p>
+      <p>Do not use ChartLens to violate provider terms, exchange rules, laws, or regulations. If you need professional advice, consult a properly licensed professional in your jurisdiction.</p>
+      <p>Contact/company details should be added before a broad public launch.</p>
+    </section>
+  </main>
+</body>
+</html>

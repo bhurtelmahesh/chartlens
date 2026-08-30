@@ -5,6 +5,7 @@ const els = {
   thumb: $('#thumb'), fileName: $('#fileName'), fileDetails: $('#fileDetails'), removeFile: $('#removeFile'),
   symbol: $('#symbolInput'), market: $('#marketInput'), timeframe: $('#timeframeInput'), price: $('#priceInput'),
   marketResults: $('#marketResults'), analyze: $('#analyzeButton'), demo: $('#demoButton'), live: $('#liveButton'), liveStatus: $('#liveStatus'),
+  liveProgress: $('#liveProgress'), liveProgressLabel: $('#liveProgressLabel'), liveProgressTrack: $('#liveProgressTrack'), liveProgressBar: $('#liveProgressBar'),
   hero: $('#hero'), processing: $('#processing'), results: $('#results'), scanPercent: $('#scanPercent'), steps: [...document.querySelectorAll('#processSteps li')],
   resultImage: $('#resultImage'), resultSymbol: $('#resultSymbol'), resultTimeframe: $('#resultTimeframe'),
   sourceLabel: $('#sourceLabel'), sourceDetail: $('#sourceDetail'), dimensions: $('#imageDimensions'), edgeDensity: $('#edgeDensity'), analysisTime: $('#analysisTime'),
@@ -50,15 +51,15 @@ function normalizeTicker(value) {
 }
 
 function binanceInterval(value) {
-  return ({ '15m': '15m', '1h': '1h', '4h': '4h', '1D': '1d', '1W': '1w' })[value] || '1h';
+  return ({ '1m': '1m', '5m': '5m', '15m': '15m', '1h': '1h', '4h': '4h', '1D': '1d', '1W': '1w' })[value] || '1h';
 }
 
 function yahooInterval(value) {
-  return ({ '15m': '15m', '1h': '60m', '4h': '1d', '1D': '1d', '1W': '1wk' })[value] || '1d';
+  return ({ '1m': '1m', '5m': '5m', '15m': '15m', '1h': '60m', '4h': '1d', '1D': '1d', '1W': '1wk' })[value] || '1d';
 }
 
 function rangeForInterval(value) {
-  return ({ '15m': '5d', '1h': '1mo', '4h': '6mo', '1D': '1y', '1W': '5y' })[value] || '6mo';
+  return ({ '1m': '1d', '5m': '5d', '15m': '5d', '1h': '1mo', '4h': '6mo', '1D': '1y', '1W': '5y' })[value] || '6mo';
 }
 
 function withUsdtFallback(query, market) {
@@ -112,6 +113,21 @@ async function resolveMarket(query, market, intervalValue) {
   const cleaned = query.trim();
   const preferredMarket = market || 'auto';
   const aliased = knownMarketAliases[cleaned.toUpperCase()];
+  const cleanedTicker = normalizeTicker(cleaned);
+  const isExplicitCrypto = /USDT$|USDC$|FDUSD$|BUSD$|BTC$|ETH$/.test(cleanedTicker);
+  const normalized = withUsdtFallback(cleaned, preferredMarket === 'crypto' ? 'crypto' : preferredMarket);
+  if (preferredMarket === 'crypto' || (preferredMarket === 'auto' && isExplicitCrypto)) {
+    els.marketResults.hidden = true;
+    return {
+      symbol: normalized,
+      query: cleaned,
+      name: `${normalized} spot market`,
+      market: 'crypto',
+      provider: 'binance',
+      exchange: 'Binance',
+      interval: binanceInterval(intervalValue)
+    };
+  }
   if (aliased && (preferredMarket === 'auto' || preferredMarket === 'tse' || preferredMarket === 'global')) {
     els.marketResults.hidden = false;
     els.marketResults.innerHTML = `
@@ -305,6 +321,7 @@ function loadFile(file) {
 function resetFile() {
   state.image = null; state.file = null; state.source = 'screenshot'; state.marketMeta = null;
   els.fileInput.value = ''; els.uploadZone.hidden = false; els.fileLoaded.hidden = true; els.analyze.disabled = true; els.liveStatus.textContent = ''; els.marketResults.hidden = true;
+  clearLiveProgress();
 }
 
 function buildDemoChart() {
@@ -331,24 +348,32 @@ async function analyzeLiveMarket() {
   els.live.disabled = true;
   els.analyze.disabled = true;
   els.liveStatus.textContent = `Resolving ${query}…`;
+  setLiveProgress(8, `Resolving ${query}`);
   try {
     const resolved = await resolveMarket(query, els.market.value, intervalValue);
     els.symbol.value = resolved.symbol;
     els.market.value = ['auto','crypto','us','tse','nepse','global'].includes(resolved.market) ? resolved.market : 'global';
     els.liveStatus.textContent = `Fetching ${resolved.symbol} candles…`;
+    setLiveProgress(34, `Fetching ${resolved.symbol} candles`);
     const { candles, meta } = await fetchCandlesForMarket(resolved, intervalValue);
     if (!candles || candles.length < 20) throw new Error(`Not enough candle data for ${resolved.symbol}.`);
     if (meta.market === 'nepse') els.timeframe.value = '1D';
+    if (meta.notice && meta.interval === '1d') els.timeframe.value = '1D';
     const chartMeta = { ...meta, interval: meta.interval || binanceInterval(intervalValue), name: meta.name || resolved.name };
+    setLiveProgress(62, 'Rendering chart locally');
     const dataUrl = renderCandleChart(candles, chartMeta);
     const last = candles[candles.length - 1].close;
     els.price.value = last >= 1 ? last.toFixed(2) : last.toFixed(6);
     const approxSize = Math.round(dataUrl.length * .75);
     await setFile({ name: `${chartMeta.symbol}-${intervalValue}-live-chart.png`, size: approxSize, type: 'image/png' }, dataUrl, 'live', chartMeta);
     els.liveStatus.textContent = `Loaded ${chartMeta.symbol}. Analyzing…`;
+    setLiveProgress(84, `Analyzing ${chartMeta.symbol}`);
     await runAnalysis();
+    setLiveProgress(100, 'Analysis complete');
+    setTimeout(clearLiveProgress, 900);
   } catch (error) {
     els.liveStatus.textContent = error.message || 'Market lookup failed. Try a ticker symbol plus market.';
+    setLiveProgress(100, 'Could not complete fetch');
     els.analyze.disabled = !state.image;
   } finally {
     els.live.disabled = false;
@@ -386,6 +411,21 @@ function analyzePixels(image) {
 }
 
 function wait(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
+
+function setLiveProgress(percent, label) {
+  const clamped = Math.max(0, Math.min(100, percent));
+  els.liveProgress.hidden = false;
+  els.liveProgressLabel.textContent = label;
+  els.liveProgressTrack.setAttribute('aria-valuenow', String(Math.round(clamped)));
+  els.liveProgressBar.style.width = `${clamped}%`;
+}
+
+function clearLiveProgress() {
+  els.liveProgress.hidden = true;
+  els.liveProgressLabel.textContent = 'Preparing…';
+  els.liveProgressTrack.setAttribute('aria-valuenow', '0');
+  els.liveProgressBar.style.width = '0%';
+}
 
 async function runAnalysis() {
   if (!state.image) return;
@@ -531,6 +571,8 @@ function renderList(container, items, empty, type = 'analysis') {
 
 function renderWorkspace() {
   els.historyCount.textContent = state.workspace.analyses.length;
+  const hasWorkspaceData = state.workspace.analyses.length || state.workspace.favorites.length || state.workspace.trackers.length;
+  els.historyButton.hidden = !state.user && !hasWorkspaceData;
   renderList(els.historyList, state.workspace.analyses, 'No analyses yet');
   renderList(els.favoritesList, state.workspace.favorites, 'No favorites yet');
   renderList(els.trackersList, state.workspace.trackers, 'No trackers yet', 'tracker');
@@ -551,7 +593,7 @@ async function initializeFirebase() {
     state.firebase = { enabled: true, app, auth, db, api: { ...authModule, ...firestoreModule } };
     authModule.onAuthStateChanged(auth, async user => {
       state.user = user;
-      els.authButton.textContent = user ? user.email : 'Sign in';
+      els.authButton.textContent = user ? (user.displayName || user.email || 'Account') : 'Sign in / save';
       if (user) await loadCloudWorkspace();
       renderWorkspace();
     });

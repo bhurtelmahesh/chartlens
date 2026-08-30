@@ -72,13 +72,22 @@ function normalizeCrypto(symbol) {
   return `${symbol}USDT`;
 }
 
+function yahooCryptoSymbol(symbol) {
+  const clean = normalizeCrypto(symbol);
+  const quote = ["USDT", "USDC", "FDUSD", "BUSD", "BTC", "ETH"].find(suffix => clean.endsWith(suffix));
+  if (!quote) return clean;
+  const base = clean.slice(0, -quote.length);
+  const yahooQuote = quote === "USDT" || quote === "USDC" || quote === "FDUSD" || quote === "BUSD" ? "USD" : quote;
+  return `${base}-${yahooQuote}`;
+}
+
 function intervalForProvider(provider, requested) {
-  if (provider === "binance") return ({ "15m": "15m", "1h": "1h", "4h": "4h", "1D": "1d", "1W": "1w" })[requested] || "1h";
-  return ({ "15m": "15m", "1h": "60m", "4h": "1d", "1D": "1d", "1W": "1wk" })[requested] || "1d";
+  if (provider === "binance") return ({ "1m": "1m", "5m": "5m", "15m": "15m", "1h": "1h", "4h": "4h", "1D": "1d", "1W": "1w" })[requested] || "1h";
+  return ({ "1m": "1m", "5m": "5m", "15m": "15m", "1h": "60m", "4h": "1d", "1D": "1d", "1W": "1wk" })[requested] || "1d";
 }
 
 function rangeForInterval(requested) {
-  return ({ "15m": "5d", "1h": "1mo", "4h": "6mo", "1D": "1y", "1W": "5y" })[requested] || "1y";
+  return ({ "1m": "1d", "5m": "5d", "15m": "5d", "1h": "1mo", "4h": "6mo", "1D": "1y", "1W": "5y" })[requested] || "1y";
 }
 
 async function fetchJson(url, headers = {}) {
@@ -313,11 +322,27 @@ async function handleApi(request, env) {
       if (provider === "binance" || isCrypto(symbol, market)) {
         symbol = normalizeCrypto(symbol);
         const interval = intervalForProvider("binance", requestedInterval);
-        return send(200, { meta: { symbol, market: "crypto", provider: "binance", exchange: "Binance", interval }, candles: await getBinanceCandles(symbol, interval) });
+        try {
+          return send(200, { meta: { symbol, market: "crypto", provider: "binance", exchange: "Binance", interval }, candles: await getBinanceCandles(symbol, interval) });
+        } catch (binanceError) {
+          const yahooSymbol = yahooCryptoSymbol(symbol);
+          return send(200, {
+            meta: { symbol, market: "crypto", provider: "yahoo-crypto-fallback", exchange: "Yahoo Finance", interval: intervalForProvider("yahoo", requestedInterval), name: yahooSymbol, notice: `Binance unavailable from proxy (${binanceError.message}); using Yahoo Finance fallback.` },
+            candles: await getYahooCandles(yahooSymbol, requestedInterval)
+          });
+        }
       }
       symbol = applyMarketSuffix(symbol, market);
       const known = Object.values(knownMarketAliases).find(item => item.symbol === symbol);
-      return send(200, { meta: { symbol, market: known?.market || market, provider: "yahoo", exchange: known?.exchange || "Yahoo Finance", interval: intervalForProvider("yahoo", requestedInterval), name: known?.name }, candles: await getYahooCandles(symbol, requestedInterval) });
+      try {
+        return send(200, { meta: { symbol, market: known?.market || market, provider: "yahoo", exchange: known?.exchange || "Yahoo Finance", interval: intervalForProvider("yahoo", requestedInterval), name: known?.name }, candles: await getYahooCandles(symbol, requestedInterval) });
+      } catch (yahooError) {
+        if (!["1m", "5m", "15m", "1h", "4h"].includes(requestedInterval)) throw yahooError;
+        return send(200, {
+          meta: { symbol, market: known?.market || market, provider: "yahoo", exchange: known?.exchange || "Yahoo Finance", interval: "1d", name: known?.name, notice: `Requested intraday data was unavailable (${yahooError.message}); using daily candles.` },
+          candles: await getYahooCandles(symbol, "1D")
+        });
+      }
     }
 
     return send(404, { error: "Unknown API route" });
