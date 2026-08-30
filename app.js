@@ -497,8 +497,8 @@ function analyzeCandles(candles) {
     : 'mixed';
 
   const lastClose = closes[n - 1];
-  const priorHigh = highs.length ? highs[highs.length - 1].price : Math.max(...closes.slice(0, -1));
-  const priorLow = lows.length ? lows[lows.length - 1].price : Math.min(...closes.slice(0, -1));
+  const priorHigh = highs.length ? highs[highs.length - 1].price : Infinity;
+  const priorLow = lows.length ? lows[lows.length - 1].price : -Infinity;
   const bos = lastClose > priorHigh ? 'bullish break'
     : lastClose < priorLow ? 'bearish break'
     : 'none';
@@ -536,8 +536,8 @@ function analyzeCandles(candles) {
   return {
     method: 'candle-structure', direction, confidence, band: confidenceBand(confidence),
     ema20Slope, structure, bos, r2,
-    lastSwingHigh: lastTwoHighs.length ? lastTwoHighs[lastTwoHighs.length - 1].price : priorHigh,
-    lastSwingLow: lastTwoLows.length ? lastTwoLows[lastTwoLows.length - 1].price : priorLow,
+    lastSwingHigh: lastTwoHighs.length ? lastTwoHighs[lastTwoHighs.length - 1].price : Math.max(...candles.map(c => c.high)),
+    lastSwingLow: lastTwoLows.length ? lastTwoLows[lastTwoLows.length - 1].price : Math.min(...candles.map(c => c.low)),
     candleCount: n
   };
 }
