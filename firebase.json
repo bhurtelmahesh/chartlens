@@ -27,9 +27,15 @@
     "public": ".",
     "ignore": [
       "firebase.json",
+      "README.md",
       "**/.*",
       "**/node_modules/**",
-      "functions/**"
+      ".agents/**",
+      "functions/**",
+      "firestore.rules",
+      "firestore.indexes.json",
+      "firebase-config.example.js",
+      "skills-lock.json"
     ],
     "rewrites": [
       {

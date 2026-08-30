@@ -51,6 +51,11 @@ Live market mode uses Binance public candle data and currently works best with c
 
 This repo is connected to Firebase project `chartlens101` and includes Firebase Hosting, Functions, Authentication, and Firestore config.
 
+Production URLs:
+
+- Primary Firebase Hosting: https://chartlens101.web.app
+- Secondary GitHub Pages mirror: https://bhurtelmahesh.github.io/chartlens/
+
 The registered Firebase Web App is `chartlens-web`, and `firebase-config.js` contains the public browser SDK config. ChartLens uses:
 
 - Firebase Authentication for optional Email/password login and Google Sign-in.
@@ -62,6 +67,8 @@ Deploy the Firebase backend config and app with:
 npm --prefix functions install
 npx -y firebase-tools@latest deploy --only auth,firestore,hosting,functions
 ```
+
+Firebase Functions require the Firebase project to be on the Blaze plan. Without Functions, static hosting, Firebase Auth, Firestore sync, screenshot analysis, demo analysis, and direct Binance crypto fallback can still work, but the `/api` market-data routes for broader equities/exchanges will not be available.
 
 For local testing, run:
 
