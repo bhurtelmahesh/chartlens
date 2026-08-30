@@ -1,5 +1,38 @@
 # Changelog
 
+## 2026-08-30 — new-user walkthrough fixes
+
+Found by using the deployed app cold.
+
+- **Yahoo phantom bar.** The still-forming last daily bar came back with
+  null OHLC, which `Number()` turned into `0` and the finite-check let
+  through — producing "Last 0" charts and bogus high-confidence
+  "falling" verdicts on every US/global daily analysis. OHLC parsers now
+  require every value `> 0`; `analyzeCandles` also drops non-positive
+  bars defensively.
+- **NEPSE now works.** The old `surajrimal` API is dead (DNS gone).
+  Primary source is now merolagani's public TradingView chart feed
+  (daily bars, no auth); the dead API is a fallback. Failure copy is
+  calmer and says NEPSE is experimental; the market dropdown is labelled
+  so.
+- **Crypto fallback is quiet.** Binance 403s the proxy from datacenter
+  IPs as a rule, so Yahoo crypto data is served as provider `yahoo` with
+  no alarming "Binance unavailable" notice.
+- **Failed live run** no longer leaves the previous result on screen.
+- **Reference price** the user typed is no longer overwritten.
+- **Client-side timeouts** (15 s resolve / 20 s fetch) replace a ~20 s
+  silent hang on a typo'd ticker; the progress bar clears after failure.
+- **"Range" confidence** is capped at 65 % so "no clean trend" never
+  reads as *High*.
+- **History / favorites / trackers rows are clickable** — re-run that
+  ticker (screenshot rows say they can't be reopened).
+- Chart title shows the interval you picked (`1H`), not the provider's
+  `60M`. Empty ticker announces the BTCUSDT default. Auth modal's guest
+  button reads "Continue without an account" / "Sign out". Disabled
+  Analyze button is legible.
+- **HTML served `no-cache`** so a returning visitor after a deploy gets
+  the current `?v=` asset refs instead of stale JS.
+
 ## 2026-08-30 — security, correctness & analysis pass
 
 Picked up after the Codex build. All changes on `main`.
