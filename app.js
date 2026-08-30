@@ -168,7 +168,7 @@ async function fetchCandlesForMarket(meta, intervalValue) {
         throw new Error('Live market data needs Firebase Functions deployed for this browser. Screenshot/demo analysis still works locally.');
       }
     }
-    throw new Error(`${meta.symbol} needs the Firebase market-data function or a provider key. Deploy Firebase Functions to enable stocks, exchanges, and reliable live crypto fetches.`);
+    throw new Error(`${meta.symbol} needs a market-data proxy. To stay free, use the Cloudflare Worker proxy; Firebase Auth and Firestore still work without Blaze.`);
   }
 }
 

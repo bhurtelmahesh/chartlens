@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=5" />
+  <link rel="stylesheet" href="styles.css?v=6" />
 </head>
 <body>
   <div class="noise"></div>
@@ -32,15 +32,48 @@
 
       <div class="workspace-card">
         <div class="mode-panel live-panel">
-          <div>
+          <div class="live-copy">
             <span class="mode-kicker">Live market mode</span>
             <strong>Analyze the current chart now</strong>
             <p>Enter a ticker or company name. ChartLens searches global providers, including unofficial NEPSE daily data, renders the chart, then analyzes it.</p>
           </div>
-          <button class="live-button" id="liveButton" type="button">
-            <span>Fetch & analyze now</span>
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 0 1 13.7-5.7M20 12a8 8 0 0 1-13.7 5.7M18 3v5h-5M6 21v-5h5"/></svg>
-          </button>
+          <div class="live-actions">
+            <div class="metadata-row live-metadata">
+              <label>
+                <span>Ticker or company</span>
+                <input id="symbolInput" placeholder="e.g. AAPL, Toyota, NABIL, BTCUSDT" maxlength="48" autocomplete="off" />
+              </label>
+              <label>
+                <span>Market</span>
+                <select id="marketInput">
+                  <option value="auto" selected>Auto detect</option>
+                  <option value="crypto">Crypto</option>
+                  <option value="us">US / NYSE / Nasdaq</option>
+                  <option value="tse">Tokyo Stock Exchange</option>
+                  <option value="nepse">NEPSE Nepal</option>
+                  <option value="global">Other global</option>
+                </select>
+              </label>
+              <label>
+                <span>Interval</span>
+                <select id="timeframeInput">
+                  <option value="15m">15 minutes</option>
+                  <option value="1h" selected>1 hour</option>
+                  <option value="4h">4 hours</option>
+                  <option value="1D">1 day</option>
+                  <option value="1W">1 week</option>
+                </select>
+              </label>
+              <label>
+                <span>Reference price <small>optional</small></span>
+                <input id="priceInput" type="number" min="0" step="any" placeholder="e.g. 64250" />
+              </label>
+            </div>
+            <button class="live-button" id="liveButton" type="button">
+              <span>Fetch & analyze now</span>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 0 1 13.7-5.7M20 12a8 8 0 0 1-13.7 5.7M18 3v5h-5M6 21v-5h5"/></svg>
+            </button>
+          </div>
         </div>
         <p class="live-status" id="liveStatus" role="status" aria-live="polite"></p>
 
@@ -67,37 +100,6 @@
           <button id="removeFile" type="button" aria-label="Remove uploaded image">×</button>
         </div>
 
-        <div class="metadata-row">
-          <label>
-            <span>Ticker or company</span>
-            <input id="symbolInput" placeholder="e.g. AAPL, Toyota, NABIL, BTCUSDT" maxlength="48" autocomplete="off" />
-          </label>
-          <label>
-            <span>Market</span>
-            <select id="marketInput">
-              <option value="auto" selected>Auto detect</option>
-              <option value="crypto">Crypto</option>
-              <option value="us">US / NYSE / Nasdaq</option>
-              <option value="tse">Tokyo Stock Exchange</option>
-              <option value="nepse">NEPSE Nepal</option>
-              <option value="global">Other global</option>
-            </select>
-          </label>
-          <label>
-            <span>Interval</span>
-            <select id="timeframeInput">
-              <option value="15m">15 minutes</option>
-              <option value="1h" selected>1 hour</option>
-              <option value="4h">4 hours</option>
-              <option value="1D">1 day</option>
-              <option value="1W">1 week</option>
-            </select>
-          </label>
-          <label>
-            <span>Reference price <small>optional</small></span>
-            <input id="priceInput" type="number" min="0" step="any" placeholder="e.g. 64250" />
-          </label>
-        </div>
         <div class="market-results" id="marketResults" hidden></div>
 
         <div class="workspace-footer">
@@ -252,6 +254,6 @@
     );
   </script>
   <script src="firebase-config.js?v=5"></script>
-  <script src="app.js?v=5"></script>
+  <script src="app.js?v=6"></script>
 </body>
 </html>
