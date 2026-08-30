@@ -5,7 +5,8 @@
   },
   "functions": {
     "source": "functions",
-    "runtime": "nodejs20"
+    "runtime": "nodejs20",
+    "predeploy": ["node scripts/sync-shared.mjs"]
   },
   "hosting": {
     "public": ".",

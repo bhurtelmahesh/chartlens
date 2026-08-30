@@ -93,6 +93,28 @@ npx -y wrangler@latest deploy
 
 After deployment, set `window.CHARTLENS_API_BASE` to the Worker URL. Keep Firebase Auth and Firestore on `chartlens101`.
 
+### Shared core
+
+All provider/routing logic lives in **one** file, `workers/market-proxy/src/market-core.js`
+(the canonical source). `node scripts/sync-shared.mjs` copies it to
+`functions/market-core.js` so the Firebase Function deploy bundle is self-contained; the
+`firebase.json` functions `predeploy` hook runs this automatically. Edit only the canonical
+file — `functions/market-core.js` is generated and carries a "do not edit" banner.
+
+The two entrypoints (`workers/market-proxy/src/index.js`, `functions/index.js`) are transport
+only.
+
+### Proxy security
+
+- **CORS** is restricted to an allowlist (`chartlens101.web.app`, `chartlens101.firebaseapp.com`,
+  `bhurtelmahesh.github.io`, and `localhost:4173` / `127.0.0.1:4173` for local dev). Other
+  origins get no `Access-Control-Allow-Origin`.
+- **Rate limit**: 60 requests / 60 s per client IP. The Worker uses the free Cloudflare
+  `[[ratelimit]]` binding (`MARKET_RL` in `wrangler.toml`) plus a per-isolate fallback; the
+  Firebase Function uses a best-effort per-instance window. Over the limit returns `429`.
+- **Input validation**: `interval`, `provider`, and `market` are whitelisted; `q` / `symbol` are
+  length-capped. Bad values return `400`. Upstream fetches have a 12 s timeout.
+
 For local testing, run:
 
 ```bash
