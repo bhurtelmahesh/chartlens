@@ -32,16 +32,11 @@
       "**/node_modules/**",
       ".agents/**",
       "functions/**",
+      "workers/**",
       "firestore.rules",
       "firestore.indexes.json",
       "firebase-config.example.js",
       "skills-lock.json"
-    ],
-    "rewrites": [
-      {
-        "source": "/api/**",
-        "function": "api"
-      }
     ],
     "cleanUrls": true,
     "trailingSlash": false,

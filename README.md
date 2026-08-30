@@ -76,6 +76,12 @@ To avoid Blaze for market data, use a free-tier proxy such as Cloudflare Workers
 
 A Cloudflare Worker proxy is included in `workers/market-proxy`. It mirrors the Firebase Function `/api/search` and `/api/candles` routes.
 
+Permanent Worker URL:
+
+```text
+https://chartlens-market-proxy.chartlens101.workers.dev
+```
+
 ```bash
 cd workers/market-proxy
 npx -y wrangler@latest login
