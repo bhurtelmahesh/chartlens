@@ -12,7 +12,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=8" />
+  <link rel="stylesheet" href="styles.css?v=9" />
 </head>
 <body>
   <div class="noise"></div>
@@ -54,7 +54,7 @@
                   <option value="crypto">Crypto</option>
                   <option value="us">US / NYSE / Nasdaq</option>
                   <option value="tse">Tokyo Stock Exchange</option>
-                  <option value="nepse">NEPSE Nepal</option>
+                  <option value="nepse">NEPSE Nepal (experimental)</option>
                   <option value="global">Other global</option>
                 </select>
               </label>
@@ -277,7 +277,7 @@
         <button id="signupButton" type="button">Sign up</button>
       </div>
       <button class="google-button" id="googleButton" type="button">Continue with Google</button>
-      <button class="guest-button" id="logoutButton" type="button">Continue / sign out</button>
+      <button class="guest-button" id="logoutButton" type="button">Continue without an account</button>
       <p class="auth-status" id="authStatus" role="status" aria-live="polite"></p>
     </div>
   </div>
@@ -285,6 +285,6 @@
   <canvas id="analysisCanvas" hidden></canvas>
   <script src="env.js?v=1"></script>
   <script src="firebase-config.js?v=6"></script>
-  <script src="app.js?v=8"></script>
+  <script src="app.js?v=9"></script>
 </body>
 </html>

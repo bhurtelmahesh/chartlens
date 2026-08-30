@@ -280,7 +280,7 @@ function renderCandleChart(candles, meta) {
     ctx.fillRect(x - Math.max(2, xStep * .28), canvas.height - pad.bottom + 54 - volH, Math.max(3, xStep * .56), volH);
   });
 
-  const label = `${meta.symbol} · ${(meta.interval || meta.intervalLabel || '').toUpperCase()}`;
+  const label = `${meta.symbol} · ${(meta.intervalLabel || meta.interval || '').toUpperCase()}`;
   ctx.fillStyle = '#eef2ea'; ctx.font = '700 26px monospace'; ctx.fillText(label, pad.left, 42);
   ctx.fillStyle = '#9ba6ad'; ctx.font = '16px monospace'; ctx.fillText(`${meta.name || meta.exchange || 'Live market'} · Last ${nicePrice(last.close)}`, pad.left, 66);
   ctx.fillStyle = last.close >= candles[0].open ? '#b9f227' : '#ff6b5f';
@@ -349,29 +349,42 @@ function buildDemoChart() {
   canvas.toBlob(blob => setFile(new File([blob], 'demo-btc-chart.png', {type:'image/png'}), URL.createObjectURL(blob), 'screenshot', null), 'image/png');
 }
 
+function withTimeout(promise, ms, label) {
+  let timer;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`${label} timed out. The market-data proxy may be slow — try again.`)), ms);
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+}
+
 async function analyzeLiveMarket() {
-  const query = els.symbol.value.trim() || 'BTCUSDT';
+  const typed = els.symbol.value.trim();
+  const query = typed || 'BTCUSDT';
   const intervalValue = els.timeframe.value;
   els.live.disabled = true;
   els.analyze.disabled = true;
-  els.liveStatus.textContent = `Resolving ${query}…`;
+  // A fresh run should not leave a previous result on screen if it fails.
+  els.results.hidden = true;
+  els.hero.hidden = false;
+  els.liveStatus.textContent = typed ? `Resolving ${query}…` : `No ticker entered — showing ${query}.`;
   setLiveProgress(8, `Resolving ${query}`);
   try {
-    const resolved = await resolveMarket(query, els.market.value, intervalValue);
+    const resolved = await withTimeout(resolveMarket(query, els.market.value, intervalValue), 15000, 'Ticker lookup');
     els.symbol.value = resolved.symbol;
     els.market.value = ['auto','crypto','us','tse','nepse','global'].includes(resolved.market) ? resolved.market : 'global';
     els.liveStatus.textContent = `Fetching ${resolved.symbol} candles…`;
     setLiveProgress(34, `Fetching ${resolved.symbol} candles`);
-    const { candles, meta } = await fetchCandlesForMarket(resolved, intervalValue);
+    const { candles, meta } = await withTimeout(fetchCandlesForMarket(resolved, intervalValue), 20000, 'Candle fetch');
     if (!candles || candles.length < 20) throw new Error(`Not enough candle data for ${resolved.symbol}.`);
     if (meta.market === 'nepse') els.timeframe.value = '1D';
     if (meta.notice && meta.interval === '1d') els.timeframe.value = '1D';
-    const chartMeta = { ...meta, interval: meta.interval || binanceInterval(intervalValue), name: meta.name || resolved.name };
+    const chartMeta = { ...meta, interval: meta.interval || binanceInterval(intervalValue), intervalLabel: intervalValue, name: meta.name || resolved.name };
     state.liveCandles = candles;
     setLiveProgress(62, 'Rendering chart locally');
     const dataUrl = renderCandleChart(candles, chartMeta);
     const last = candles[candles.length - 1].close;
-    els.price.value = last >= 1 ? last.toFixed(2) : last.toFixed(6);
+    // Don't clobber a reference price the user typed themselves.
+    if (!els.price.value.trim()) els.price.value = last >= 1 ? last.toFixed(2) : last.toFixed(6);
     const approxSize = Math.round(dataUrl.length * .75);
     await setFile({ name: `${chartMeta.symbol}-${intervalValue}-live-chart.png`, size: approxSize, type: 'image/png' }, dataUrl, 'live', chartMeta);
     els.liveStatus.textContent = `Loaded ${chartMeta.symbol}. Analyzing…`;
@@ -382,6 +395,7 @@ async function analyzeLiveMarket() {
   } catch (error) {
     els.liveStatus.textContent = error.message || 'Market lookup failed. Try a ticker symbol plus market.';
     setLiveProgress(100, 'Could not complete fetch');
+    setTimeout(clearLiveProgress, 2500);
     els.analyze.disabled = !state.image;
   } finally {
     els.live.disabled = false;
@@ -476,6 +490,9 @@ function swingPoints(candles, k = 3) {
 // slope-detecting a picture of it: EMA slope + swing structure + break of
 // structure, with an honest 0-100 confidence.
 function analyzeCandles(candles) {
+  // Defensive: a provider may still slip in a null/zero bar (esp. the latest,
+  // still-forming one). A real OHLC bar has four positive prices.
+  candles = candles.filter(c => [c.open, c.high, c.low, c.close].every(v => Number.isFinite(v) && v > 0));
   const closes = candles.map(c => c.close);
   const n = closes.length;
   const period = Math.max(5, Math.min(20, Math.floor(n / 3)));
@@ -532,6 +549,8 @@ function analyzeCandles(candles) {
     confidence = Math.round(100 * agree * (0.4 * slopeComponent + 0.25 * (structure !== 'mixed' ? 1 : 0) + 0.15 * (bos !== 'none' ? 1 : 0) + 0.2 * r2));
   }
   confidence = Math.max(3, Math.min(97, confidence));
+  // "No clean trend" is never a high-conviction call — keep range in the Low/Moderate band.
+  if (direction === 'range') confidence = Math.min(confidence, 65);
 
   return {
     method: 'candle-structure', direction, confidence, band: confidenceBand(confidence),
@@ -763,7 +782,9 @@ function flashSaveStatus(message) {
 
 function renderList(container, items, empty, type = 'analysis') {
   container.innerHTML = items.length ? items.map(item => `
-    <div class="history-item">
+    <div class="history-item" role="button" tabindex="0"
+         data-symbol="${esc(item.symbol)}" data-market="${esc(item.market || 'auto')}"
+         data-timeframe="${esc(item.timeframe)}" data-source="${esc(item.source || 'live')}">
       <div>
         <strong>${esc(item.symbol)} / ${esc(item.timeframe)}</strong><br>
         <span>${esc(item.status || item.direction)}</span>
@@ -772,6 +793,23 @@ function renderList(container, items, empty, type = 'analysis') {
       <span>${type === 'tracker' && item.active ? 'ON' : `${esc(item.confidence)}%`}</span>
     </div>
   `).join('') : `<div class="empty-history">${esc(empty)}</div>`;
+}
+
+function reopenFromItem(el) {
+  if (!el) return;
+  const { symbol, market, timeframe, source } = el.dataset;
+  if (source === 'screenshot') {
+    flashSaveStatus('Screenshot analyses can’t be reopened — upload the image again.');
+    return;
+  }
+  toggleHistory(false);
+  els.symbol.value = symbol || '';
+  const markets = ['auto','crypto','us','tse','nepse','global'];
+  els.market.value = markets.includes(market) ? market : 'auto';
+  const intervals = ['1m','5m','15m','1h','4h','1D','1W'];
+  els.timeframe.value = intervals.includes(timeframe) ? timeframe : '1h';
+  els.price.value = '';
+  analyzeLiveMarket();
 }
 
 function renderWorkspace() {
@@ -799,6 +837,7 @@ async function initializeFirebase() {
     authModule.onAuthStateChanged(auth, async user => {
       state.user = user;
       els.authButton.textContent = user ? (user.displayName || user.email || 'Account') : 'Sign in / save';
+      els.logoutButton.textContent = user ? 'Sign out' : 'Continue without an account';
       if (user) await loadCloudWorkspace();
       renderWorkspace();
     });
@@ -902,6 +941,12 @@ els.trackerButton.addEventListener('click', startTracker);
 els.historyButton.addEventListener('click', () => toggleHistory(true));
 els.closeHistory.addEventListener('click', () => toggleHistory(false));
 els.drawerBackdrop.addEventListener('click', () => toggleHistory(false));
+[els.historyList, els.favoritesList, els.trackersList].forEach(list => {
+  list.addEventListener('click', (e) => reopenFromItem(e.target.closest('.history-item')));
+  list.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); reopenFromItem(e.target.closest('.history-item')); }
+  });
+});
 els.authButton.addEventListener('click', () => { els.authModal.hidden = false; });
 els.authClose.addEventListener('click', () => { els.authModal.hidden = true; });
 els.loginButton.addEventListener('click', () => handleAuth('login'));
