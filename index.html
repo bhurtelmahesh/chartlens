@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="ChartLens turns chart screenshots or live crypto tickers into structured, educational market observations." />
+  <meta name="description" content="ChartLens turns chart screenshots or live tickers into structured, educational market observations." />
   <meta name="theme-color" content="#0a0d0b" />
   <title>ChartLens — Market Structure Analysis</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml" />
@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=6" />
+  <link rel="stylesheet" href="styles.css?v=7" />
 </head>
 <body>
   <div class="noise"></div>
@@ -22,7 +22,7 @@
     </a>
     <div class="top-actions">
       <span class="status"><b></b> Analysis engine online</span>
-      <button class="auth-button" id="authButton" type="button">Sign in</button>
+      <button class="auth-button" id="authButton" type="button">Sign in / save</button>
       <button class="history-button" id="historyButton" type="button">Recent <span id="historyCount">0</span></button>
     </div>
   </header>
@@ -31,14 +31,14 @@
     <section class="hero" id="hero">
       <div class="eyebrow"><span>01</span> Chart intelligence</div>
       <h1>See the structure.<br><em>Not the noise.</em></h1>
-      <p class="hero-copy">Upload a chart screenshot or enter a live crypto ticker. ChartLens turns market structure into a clean, explainable brief.</p>
+      <p class="hero-copy">Upload a chart screenshot or enter a live ticker. ChartLens turns market structure into a clean, explainable brief without presenting it as investment advice.</p>
 
       <div class="workspace-card">
         <div class="mode-panel live-panel">
           <div class="live-copy">
             <span class="mode-kicker">Live market mode</span>
             <strong>Analyze the current chart now</strong>
-            <p>Enter a ticker or company name. ChartLens searches global providers, including unofficial NEPSE daily data, renders the chart, then analyzes it.</p>
+            <p>Enter a ticker or company name. ChartLens calls a market-data proxy, renders a chart in your browser, then runs a visual structure scan.</p>
           </div>
           <div class="live-actions">
             <div class="metadata-row live-metadata">
@@ -60,6 +60,8 @@
               <label>
                 <span>Interval</span>
                 <select id="timeframeInput">
+                  <option value="1m">1 minute</option>
+                  <option value="5m">5 minutes</option>
                   <option value="15m">15 minutes</option>
                   <option value="1h" selected>1 hour</option>
                   <option value="4h">4 hours</option>
@@ -79,6 +81,10 @@
           </div>
         </div>
         <p class="live-status" id="liveStatus" role="status" aria-live="polite"></p>
+        <div class="live-progress" id="liveProgress" hidden>
+          <span id="liveProgressLabel">Preparing…</span>
+          <div class="live-progress-track" id="liveProgressTrack" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="Live market analysis progress"><i id="liveProgressBar"></i></div>
+        </div>
 
         <div class="section-divider"><span>or analyze a screenshot</span></div>
 
@@ -115,10 +121,29 @@
       </div>
 
       <div class="trust-row">
-        <span><svg viewBox="0 0 24 24"><path d="M12 3 5 6v5c0 4.7 2.9 8.5 7 10 4.1-1.5 7-5.3 7-10V6l-7-3Z"/></svg> Runs locally in your browser</span>
-        <span><svg viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></svg> Screenshot mode stores no image</span>
-        <span><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5m0-8v.01"/></svg> Educational analysis only</span>
+        <span><svg viewBox="0 0 24 24"><path d="M12 3 5 6v5c0 4.7 2.9 8.5 7 10 4.1-1.5 7-5.3 7-10V6l-7-3Z"/></svg> Screenshot pixels are scanned locally</span>
+        <span><svg viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></svg> Live tickers use a market-data proxy</span>
+        <span><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5m0-8v.01"/></svg> Research aid, not financial advice</span>
       </div>
+
+      <section class="trust-scaffold" aria-label="ChartLens trust and methodology summary">
+        <article>
+          <span>How it works</span>
+          <p>Screenshot mode uses browser canvas/pixel heuristics. Live mode fetches candles through Cloudflare, draws the chart locally, then applies the same visual scan.</p>
+        </article>
+        <article>
+          <span>Data integrity</span>
+          <p>Market data can be delayed, incomplete, stale, or provider-limited. NEPSE support is experimental and relies on unofficial/community data sources.</p>
+        </article>
+        <article>
+          <span>Pricing</span>
+          <p>Free beta. No paid plan is active yet, and no brokerage execution is connected.</p>
+        </article>
+        <article>
+          <span>Before trading</span>
+          <p>Do your own verification. ChartLens does not know your goals, portfolio, risk tolerance, location, or regulatory status.</p>
+        </article>
+      </section>
     </section>
 
     <section class="processing" id="processing" hidden>
@@ -196,7 +221,7 @@
 
           <article class="risk-card">
             <svg viewBox="0 0 24 24"><path d="M12 3 2.5 20h19L12 3Z"/><path d="M12 9v5m0 3v.01"/></svg>
-            <p><strong>Not a trade signal.</strong> Screenshot analysis can miss indicators, labels and wider context. Confirm against live data before making any financial decision.</p>
+            <p><strong>Not a trade signal.</strong> ChartLens produces educational visual observations only. It can miss indicators, labels, wider context, data errors, and legal/regulatory constraints. Confirm independently before making any financial decision.</p>
           </article>
         </div>
       </div>
@@ -205,7 +230,12 @@
 
   <footer>
     <span>CHARTLENS / MVP 0.1</span>
-    <p>Designed for observation, not prediction.</p>
+    <nav class="footer-links" aria-label="Legal and product links">
+      <a href="legal.html#methodology">Methodology</a>
+      <a href="legal.html#privacy">Privacy</a>
+      <a href="legal.html#risk">Risk disclosure</a>
+      <a href="legal.html#terms">Terms</a>
+    </nav>
   </footer>
 
   <aside class="history-drawer" id="historyDrawer" aria-hidden="true">
@@ -230,7 +260,7 @@
       <button class="auth-close" id="authClose" type="button" aria-label="Close sign in">×</button>
       <span class="mode-kicker">Optional account</span>
       <h2>Save your ChartLens workspace</h2>
-      <p>Sign up or log in to sync analyses, favorites, and trackers with Firebase. If Firebase is not configured yet, ChartLens keeps everything locally on this device.</p>
+      <p>Use Email/password or Google Sign-in to sync analyses, favorites, and trackers with Firebase. You can also continue without an account and keep workspace data on this device.</p>
       <label>
         <span>Email</span>
         <input id="authEmail" type="email" placeholder="you@example.com" autocomplete="email" />
@@ -255,6 +285,6 @@
     window.CHARTLENS_API_BASE = window.CHARTLENS_API_BASE || 'https://chartlens-market-proxy.chartlens101.workers.dev';
   </script>
   <script src="firebase-config.js?v=5"></script>
-  <script src="app.js?v=6"></script>
+  <script src="app.js?v=7"></script>
 </body>
 </html>
