@@ -1,5 +1,9 @@
 const $ = (selector) => document.querySelector(selector);
 
+const HTML_ESCAPES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+const esc = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => HTML_ESCAPES[char]);
+const cleanSymbolText = (value) => String(value ?? '').trim().toUpperCase().replace(/[^A-Z0-9.^ -]/g, '');
+
 const els = {
   uploadZone: $('#uploadZone'), fileInput: $('#fileInput'), fileLoaded: $('#fileLoaded'),
   thumb: $('#thumb'), fileName: $('#fileName'), fileDetails: $('#fileDetails'), removeFile: $('#removeFile'),
@@ -131,8 +135,8 @@ async function resolveMarket(query, market, intervalValue) {
   if (aliased && (preferredMarket === 'auto' || preferredMarket === 'tse' || preferredMarket === 'global')) {
     els.marketResults.hidden = false;
     els.marketResults.innerHTML = `
-      <button type="button" data-symbol="${aliased.symbol}" data-market="${aliased.market}" data-name="${aliased.name}" data-provider="${aliased.provider}">
-        <strong>${aliased.symbol}</strong><span>${aliased.name} · ${aliased.exchange}</span>
+      <button type="button" data-symbol="${esc(aliased.symbol)}" data-market="${esc(aliased.market)}" data-name="${esc(aliased.name)}" data-provider="${esc(aliased.provider)}">
+        <strong>${esc(aliased.symbol)}</strong><span>${esc(aliased.name)} · ${esc(aliased.exchange)}</span>
       </button>
     `;
     return { ...aliased, interval: yahooInterval(intervalValue) };
@@ -143,8 +147,8 @@ async function resolveMarket(query, market, intervalValue) {
     if (data?.results?.length) {
       els.marketResults.hidden = false;
       els.marketResults.innerHTML = data.results.slice(0, 4).map(item => `
-        <button type="button" data-symbol="${item.symbol}" data-market="${item.market || 'global'}" data-name="${item.name || item.symbol}" data-provider="${item.provider || ''}">
-          <strong>${item.symbol}</strong><span>${item.name || item.exchange || 'Market result'}</span>
+        <button type="button" data-symbol="${esc(item.symbol)}" data-market="${esc(item.market || 'global')}" data-name="${esc(item.name || item.symbol)}" data-provider="${esc(item.provider || '')}">
+          <strong>${esc(item.symbol)}</strong><span>${esc(item.name || item.exchange || 'Market result')}</span>
         </button>
       `).join('');
       return data.results[0];
@@ -443,8 +447,8 @@ async function runAnalysis() {
 }
 
 function renderResults(m, elapsed) {
-  const symbol = (els.symbol.value.trim() || 'UNLABELED CHART').toUpperCase();
-  const timeframe = els.timeframe.value.toUpperCase();
+  const symbol = cleanSymbolText(els.symbol.value) || 'UNLABELED CHART';
+  const timeframe = cleanSymbolText(els.timeframe.value) || 'CHART';
   const price = Number(els.price.value);
   els.resultImage.src = state.image.src; els.resultSymbol.textContent = symbol; els.resultTimeframe.textContent = timeframe;
   els.sourceLabel.textContent = state.source === 'live' ? 'Live rendered chart' : 'Source image';
@@ -560,13 +564,13 @@ function renderList(container, items, empty, type = 'analysis') {
   container.innerHTML = items.length ? items.map(item => `
     <div class="history-item">
       <div>
-        <strong>${item.symbol} / ${item.timeframe}</strong><br>
-        <span>${item.status || item.direction}</span>
-        <small>${item.market || 'market'} · ${new Date(item.date || item.lastCheckedAt).toLocaleString()}</small>
+        <strong>${esc(item.symbol)} / ${esc(item.timeframe)}</strong><br>
+        <span>${esc(item.status || item.direction)}</span>
+        <small>${esc(item.market || 'market')} · ${esc(new Date(item.date || item.lastCheckedAt).toLocaleString())}</small>
       </div>
-      <span>${type === 'tracker' && item.active ? 'ON' : `${item.confidence}%`}</span>
+      <span>${type === 'tracker' && item.active ? 'ON' : `${esc(item.confidence)}%`}</span>
     </div>
-  `).join('') : `<div class="empty-history">${empty}</div>`;
+  `).join('') : `<div class="empty-history">${esc(empty)}</div>`;
 }
 
 function renderWorkspace() {
