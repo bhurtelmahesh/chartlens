@@ -68,7 +68,9 @@ npm --prefix functions install
 npx -y firebase-tools@latest deploy --only auth,firestore,hosting,functions
 ```
 
-Firebase Functions require the Firebase project to be on the Blaze plan. Without Functions, static hosting, Firebase Auth, Firestore sync, screenshot analysis, demo analysis, and direct Binance crypto fallback can still work, but the `/api` market-data routes for broader equities/exchanges will not be available.
+Firebase Functions require the Firebase project to be on the Blaze plan. Without Functions, static hosting, Firebase Auth, Firestore sync, screenshot analysis, demo analysis, and direct Binance crypto fallback can still work, but the `/api` market-data routes for broader equities/exchanges need a proxy.
+
+To avoid Blaze for market data, use a free-tier proxy such as Cloudflare Workers and set `window.CHARTLENS_API_BASE` to that Worker URL before `app.js` loads. Firestore remains the single database either way.
 
 For local testing, run:
 
