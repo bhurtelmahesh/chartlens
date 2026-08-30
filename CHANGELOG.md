@@ -1,5 +1,33 @@
 # Changelog
 
+## 2026-08-30 — audit pass: dead NEPSE host removed
+
+Found by auditing the deployed app and timing it against production.
+
+- **The dead NEPSE host is gone.** `nepseapi.surajrimal.dev` no longer
+  resolves, and it does not fail fast — it hangs until `fetchJson`'s 12 s
+  timeout. It sat on two paths: `getNepseCandles` tried two routes there
+  after merolagani (~24 s added to every NEPSE failure), and `searchNepse`
+  called `/CompanyList` on it, so **autocomplete** paid a 12 s timeout on
+  NEPSE and `auto` market queries too. Measured against production before
+  the fix: a NEPSE miss took **26.2 s** to return 502.
+- merolagani is now the only NEPSE history source, since it is the only
+  working one. The ShareBazaar quote endpoint
+  (`nepsetty.kokomo.workers.dev`) is alive and stays — it supplies company
+  names for search and the latest price for the "no history" message.
+- Removing the dead routes also retired `parseNepseCandles` and its
+  `normalizeArray` / `pickNumber` / `pickTime` helpers: 460 → 382 lines.
+- **`scripts/sync-shared.mjs --check`** exits 1 when
+  `functions/market-core.js` has drifted from the Worker copy. Editing the
+  generated file used to be clobbered silently, and deploying only the
+  Worker left the Function on stale code with nothing to catch it.
+- `workers/market-proxy` gains `deploy` / `tail` npm scripts, so the deploy
+  path is documented rather than an ad-hoc `wrangler` invocation.
+
+Note: no Cloud Functions are deployed in `chartlens101` — the `functions/`
+tree is carried in the repo but has never been live. The Worker at
+`chartlens-market-proxy.chartlens101.workers.dev` is the only serving path.
+
 ## 2026-08-30 — new-user walkthrough fixes
 
 Found by using the deployed app cold.
