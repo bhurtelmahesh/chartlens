@@ -13,6 +13,8 @@
     "ignore": [
       "firebase.json",
       "README.md",
+      "CHANGELOG.md",
+      "scripts/**",
       "**/.*",
       "**/node_modules/**",
       ".agents/**",
