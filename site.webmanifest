@@ -1,0 +1,17 @@
+{
+  "name": "ChartLens",
+  "short_name": "ChartLens",
+  "description": "Market structure analysis from screenshots and live tickers.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0d0b",
+  "theme_color": "#0a0d0b",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "64x64",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
