@@ -2,12 +2,12 @@
 
 ChartLens is a market-structure analysis app for reading chart screenshots or live ticker candles and turning them into simple visual briefs.
 
-The chart rendering and visual scan run in the browser. Live market lookup uses a Cloudflare Worker market-data proxy, and optional account sync uses Firebase Auth + Firestore:
+The chart rendering and analysis run in the browser. Live market lookup uses a Cloudflare Worker market-data proxy, and optional account sync uses Firebase Auth + Firestore:
 
 - Enter a ticker or company name and interval to fetch the current chart.
 - Upload a chart screenshot or generate a demo chart.
-- Run a local pixel-structure scan.
-- Get a directional/balanced bias, confidence score, image metrics, observations, and upside/downside scenarios.
+- Screenshot mode runs a local pixel-slope heuristic; live mode computes the read directly from the OHLC series (EMA slope, swing structure, break of structure).
+- Get a directional/balanced bias, a (non-calibrated) confidence score with a Low/Moderate/High band, chart metrics, observations, and upside/downside scenarios.
 - Save recent analyses, favorites, and active trackers locally or to Firebase after sign-in.
 
 ## Market data coverage

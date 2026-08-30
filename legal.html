@@ -28,8 +28,8 @@
       <h2>Methodology</h2>
       <p>ChartLens is an educational market-structure tool. It does not place trades, connect to a brokerage, manage money, or provide personalized financial advice.</p>
       <p>Screenshot mode processes the uploaded image in the browser using canvas/pixel heuristics. It looks for high-contrast structure, left-to-right slope, and approximate reaction zones. The screenshot is not uploaded by the current app.</p>
-      <p>Live mode sends ticker, market, interval, and provider parameters to the ChartLens Cloudflare Worker market-data proxy. The Worker fetches candle data from external market-data providers, returns normalized candles, and the browser renders the chart image locally before running the same visual scan.</p>
-      <p>The generated brief is a visual heuristic. It is not a prediction, recommendation, rating, research report, investment advisory service, or guarantee of future price movement.</p>
+      <p>Live mode sends ticker, market, interval, and provider parameters to the ChartLens Cloudflare Worker market-data proxy. The Worker fetches candle data from external market-data providers and returns normalized candles. The browser renders the chart image locally for display, but the directional read is computed directly from the numeric OHLC series: exponential moving-average slope, swing highs/lows, and whether the latest close breaks the prior swing (break of structure). The confidence figure reflects how strongly those signals agree and is not a calibrated probability.</p>
+      <p>Either way, the generated brief is a simple heuristic. It is not a prediction, recommendation, rating, research report, investment advisory service, or guarantee of future price movement.</p>
     </section>
 
     <section id="privacy" class="legal-section">

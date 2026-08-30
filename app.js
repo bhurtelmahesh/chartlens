@@ -13,7 +13,8 @@ const els = {
   hero: $('#hero'), processing: $('#processing'), results: $('#results'), scanPercent: $('#scanPercent'), steps: [...document.querySelectorAll('#processSteps li')],
   resultImage: $('#resultImage'), resultSymbol: $('#resultSymbol'), resultTimeframe: $('#resultTimeframe'),
   sourceLabel: $('#sourceLabel'), sourceDetail: $('#sourceDetail'), dimensions: $('#imageDimensions'), edgeDensity: $('#edgeDensity'), analysisTime: $('#analysisTime'), dataNotice: $('#dataNotice'),
-  confidenceLabel: $('#confidenceLabel'), confidenceBar: $('#confidenceBar'), biasTitle: $('#biasTitle'),
+  confidenceLabel: $('#confidenceLabel'), confidenceBar: $('#confidenceBar'), biasTitle: $('#biasTitle'), methodNote: $('#methodNote'),
+  briefKind: $('#briefKind'), briefHead: $('#briefHead'), zoneResistance: $('#zoneResistanceLabel'), zoneSupport: $('#zoneSupportLabel'),
   biasSummary: $('#biasSummary'), biasOrb: $('#biasOrb'), biasArrow: $('#biasArrow'), observations: $('#observations'),
   bullScenario: $('#bullScenario'), bearScenario: $('#bearScenario'), newAnalysis: $('#newAnalysis'),
   favoriteButton: $('#favoriteButton'), trackerButton: $('#trackerButton'), saveStatus: $('#saveStatus'),
@@ -29,6 +30,7 @@ const state = {
   file: null,
   source: 'screenshot',
   marketMeta: null,
+  liveCandles: null,
   lastAnalysis: null,
   user: null,
   firebase: { enabled: false, app: null, auth: null, db: null, api: null },
@@ -200,10 +202,10 @@ async function fetchCandlesForMarket(meta, intervalValue) {
       try {
         return await fetchBinanceCandles(meta, intervalValue);
       } catch {
-        throw new Error('Live market data needs Firebase Functions deployed for this browser. Screenshot/demo analysis still works locally.');
+        throw new Error('Could not reach the market-data proxy or Binance from this browser. Screenshot/demo analysis still works offline.');
       }
     }
-    throw new Error(`${meta.symbol} needs a market-data proxy. To stay free, use the Cloudflare Worker proxy; Firebase Auth and Firestore still work without Blaze.`);
+    throw new Error(`${meta.symbol} could not be loaded from the market-data proxy (${error.message || 'request failed'}). Try again shortly or use screenshot mode.`);
   }
 }
 
@@ -295,6 +297,7 @@ function setFile(file, dataUrl, source = 'screenshot', meta = null) {
   state.file = file || { name: 'demo-btc-chart.png', size: 420000, type: 'image/png' };
   state.source = source;
   state.marketMeta = meta;
+  if (source !== 'live') state.liveCandles = null;
   return new Promise((resolve, reject) => {
     const image = new Image();
     image.onload = () => {
@@ -323,7 +326,7 @@ function loadFile(file) {
 }
 
 function resetFile() {
-  state.image = null; state.file = null; state.source = 'screenshot'; state.marketMeta = null;
+  state.image = null; state.file = null; state.source = 'screenshot'; state.marketMeta = null; state.liveCandles = null;
   els.fileInput.value = ''; els.uploadZone.hidden = false; els.fileLoaded.hidden = true; els.analyze.disabled = true; els.liveStatus.textContent = ''; els.marketResults.hidden = true;
   clearLiveProgress();
 }
@@ -364,6 +367,7 @@ async function analyzeLiveMarket() {
     if (meta.market === 'nepse') els.timeframe.value = '1D';
     if (meta.notice && meta.interval === '1d') els.timeframe.value = '1D';
     const chartMeta = { ...meta, interval: meta.interval || binanceInterval(intervalValue), name: meta.name || resolved.name };
+    state.liveCandles = candles;
     setLiveProgress(62, 'Rendering chart locally');
     const dataUrl = renderCandleChart(candles, chartMeta);
     const last = candles[candles.length - 1].close;
@@ -410,8 +414,132 @@ function analyzePixels(image) {
   const density = Math.min(99, totalEdges / ((width/4)*(height/3)) * 100);
   const strength = Math.min(1, Math.abs(slope) * 3.8);
   const direction = strength < .18 ? 'range' : slope < 0 ? 'bullish' : 'bearish';
-  const confidence = Math.round(48 + strength * 34 + Math.min(10, density / 8));
-  return { slope, density, direction, confidence: Math.min(89, confidence), width: image.naturalWidth, height: image.naturalHeight };
+  // Screenshot mode is a coarse visual-slope heuristic. Score it honestly on a
+  // full 0-100 scale (no artificial floor/ceiling) and keep it modest.
+  const raw = direction === 'range'
+    ? 34 + Math.min(22, density / 4) - strength * 40
+    : strength * 60 + Math.min(18, density / 5);
+  const confidence = Math.max(5, Math.min(95, Math.round(raw)));
+  return {
+    method: 'visual-slope', slope, density, direction, confidence,
+    band: confidenceBand(confidence),
+    width: image.naturalWidth, height: image.naturalHeight
+  };
+}
+
+function confidenceBand(score) {
+  return score < 40 ? 'Low' : score <= 70 ? 'Moderate' : 'High';
+}
+
+function ema(values, period) {
+  const k = 2 / (period + 1);
+  let prev = values[0];
+  const out = [prev];
+  for (let i = 1; i < values.length; i++) {
+    prev = values[i] * k + prev * (1 - k);
+    out.push(prev);
+  }
+  return out;
+}
+
+function rSquared(values) {
+  const n = values.length;
+  if (n < 3) return 0;
+  const meanX = (n - 1) / 2;
+  const meanY = values.reduce((s, v) => s + v, 0) / n;
+  let sxx = 0, sxy = 0, syy = 0;
+  values.forEach((v, i) => {
+    sxx += (i - meanX) ** 2;
+    sxy += (i - meanX) * (v - meanY);
+    syy += (v - meanY) ** 2;
+  });
+  if (!sxx || !syy) return 0;
+  return (sxy * sxy) / (sxx * syy);
+}
+
+function swingPoints(candles, k = 3) {
+  const highs = [], lows = [];
+  for (let i = k; i < candles.length - k; i++) {
+    let isHigh = true, isLow = true;
+    for (let j = i - k; j <= i + k; j++) {
+      if (j === i) continue;
+      if (candles[j].high >= candles[i].high) isHigh = false;
+      if (candles[j].low <= candles[i].low) isLow = false;
+    }
+    if (isHigh) highs.push({ i, price: candles[i].high });
+    if (isLow) lows.push({ i, price: candles[i].low });
+  }
+  return { highs, lows };
+}
+
+// Trend read computed directly from the OHLC series (live mode), rather than
+// slope-detecting a picture of it: EMA slope + swing structure + break of
+// structure, with an honest 0-100 confidence.
+function analyzeCandles(candles) {
+  const closes = candles.map(c => c.close);
+  const n = closes.length;
+  const period = Math.max(5, Math.min(20, Math.floor(n / 3)));
+  const emaSeries = ema(closes, period);
+  const look = Math.min(period, n - 1);
+  const emaNow = emaSeries[n - 1];
+  const emaPast = emaSeries[n - 1 - look];
+  const ema20Slope = emaPast ? (emaNow - emaPast) / emaPast / look * 100 : 0; // % per bar
+
+  const { highs, lows } = swingPoints(candles);
+  const lastTwoHighs = highs.slice(-2);
+  const lastTwoLows = lows.slice(-2);
+  const higherHighs = lastTwoHighs.length === 2 && lastTwoHighs[1].price > lastTwoHighs[0].price;
+  const lowerHighs = lastTwoHighs.length === 2 && lastTwoHighs[1].price < lastTwoHighs[0].price;
+  const higherLows = lastTwoLows.length === 2 && lastTwoLows[1].price > lastTwoLows[0].price;
+  const lowerLows = lastTwoLows.length === 2 && lastTwoLows[1].price < lastTwoLows[0].price;
+  const structure = higherHighs && higherLows ? 'HH-HL (up)'
+    : lowerHighs && lowerLows ? 'LH-LL (down)'
+    : 'mixed';
+
+  const lastClose = closes[n - 1];
+  const priorHigh = highs.length ? highs[highs.length - 1].price : Math.max(...closes.slice(0, -1));
+  const priorLow = lows.length ? lows[lows.length - 1].price : Math.min(...closes.slice(0, -1));
+  const bos = lastClose > priorHigh ? 'bullish break'
+    : lastClose < priorLow ? 'bearish break'
+    : 'none';
+
+  const slopeEps = 0.12; // %/bar below this is "flat" (noise band)
+  const votes = [
+    ema20Slope > slopeEps ? 1 : ema20Slope < -slopeEps ? -1 : 0,
+    structure === 'HH-HL (up)' ? 1 : structure === 'LH-LL (down)' ? -1 : 0,
+    bos === 'bullish break' ? 1 : bos === 'bearish break' ? -1 : 0
+  ];
+  const net = votes.reduce((s, v) => s + v, 0);
+  const direction = net >= 2 ? 'bullish' : net <= -2 ? 'bearish'
+    : (net === 1 && ema20Slope > 0.25) ? 'bullish'
+    : (net === -1 && ema20Slope < -0.25) ? 'bearish'
+    : 'range';
+
+  const r2 = rSquared(closes.slice(-Math.min(n, 60)));
+  const slopeComponent = Math.min(1, Math.abs(ema20Slope) / 0.6);
+  const nonZeroVotes = votes.filter(v => v !== 0);
+  const agree = nonZeroVotes.length
+    ? Math.abs(nonZeroVotes.reduce((s, v) => s + v, 0)) / nonZeroVotes.length
+    : 0;
+
+  let confidence;
+  if (direction === 'range') {
+    // Confidence that there is no clean trend: flat EMA, mixed structure, poor linear fit.
+    confidence = Math.round(100 * (0.4 * (1 - slopeComponent) + 0.3 * (structure === 'mixed' ? 1 : 0) + 0.3 * (1 - Math.min(1, r2 * 2))));
+    // A real linear trend is present but the votes were weak — don't sound sure.
+    if (r2 > 0.35) confidence = Math.min(confidence, 45);
+  } else {
+    confidence = Math.round(100 * agree * (0.4 * slopeComponent + 0.25 * (structure !== 'mixed' ? 1 : 0) + 0.15 * (bos !== 'none' ? 1 : 0) + 0.2 * r2));
+  }
+  confidence = Math.max(3, Math.min(97, confidence));
+
+  return {
+    method: 'candle-structure', direction, confidence, band: confidenceBand(confidence),
+    ema20Slope, structure, bos, r2,
+    lastSwingHigh: lastTwoHighs.length ? lastTwoHighs[lastTwoHighs.length - 1].price : priorHigh,
+    lastSwingLow: lastTwoLows.length ? lastTwoLows[lastTwoLows.length - 1].price : priorLow,
+    candleCount: n
+  };
 }
 
 function wait(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
@@ -441,7 +569,9 @@ async function runAnalysis() {
     els.steps.forEach((step, index) => { step.classList.toggle('active', index === active); step.classList.toggle('done', index < active); });
     await wait(26);
   }
-  const metrics = analyzePixels(state.image);
+  const metrics = state.source === 'live' && Array.isArray(state.liveCandles) && state.liveCandles.length >= 20
+    ? { ...analyzeCandles(state.liveCandles), width: state.image.naturalWidth, height: state.image.naturalHeight }
+    : analyzePixels(state.image);
   await wait(180);
   renderResults(metrics, performance.now() - start);
 }
@@ -456,10 +586,28 @@ function renderResults(m, elapsed) {
   const notice = state.source === 'live' ? (state.marketMeta?.notice || '') : '';
   els.dataNotice.textContent = notice;
   els.dataNotice.hidden = !notice;
-  els.dimensions.textContent = `${m.width} × ${m.height} px`; els.edgeDensity.textContent = `${m.density.toFixed(1)}% structure density`; els.analysisTime.textContent = `${(elapsed/1000).toFixed(1)}s local scan`;
-  els.confidenceLabel.textContent = `Confidence ${m.confidence}%`; requestAnimationFrame(() => els.confidenceBar.style.width = `${m.confidence}%`);
 
-  const copy = {
+  const candle = m.method === 'candle-structure';
+  if (candle) {
+    els.dimensions.textContent = `${m.candleCount} candles`;
+    els.edgeDensity.textContent = `EMA slope ${m.ema20Slope >= 0 ? '+' : ''}${m.ema20Slope.toFixed(3)}%/bar`;
+    els.analysisTime.textContent = `${m.structure} · BOS ${m.bos}`;
+  } else {
+    els.dimensions.textContent = `${m.width} × ${m.height} px`;
+    els.edgeDensity.textContent = `${m.density.toFixed(1)}% structure density`;
+    els.analysisTime.textContent = `${(elapsed/1000).toFixed(1)}s local scan`;
+  }
+  els.confidenceLabel.textContent = `Confidence ${m.confidence}% · ${m.band}`;
+  requestAnimationFrame(() => els.confidenceBar.style.width = `${m.confidence}%`);
+  els.methodNote.textContent = candle
+    ? `From ${m.candleCount} candles — EMA slope, swing structure, break-of-structure (r²=${m.r2.toFixed(2)}).`
+    : 'Visual slope of screenshot pixels — a coarse heuristic, not a structural read.';
+  els.briefKind.textContent = candle ? 'Candle structure' : 'Visual heuristic';
+  els.briefHead.textContent = candle ? 'What the candles suggest' : 'What the image suggests';
+  els.zoneResistance.textContent = candle ? `Swing high ≈ ${nicePrice(m.lastSwingHigh)}` : 'Reaction zone';
+  els.zoneSupport.textContent = candle ? `Swing low ≈ ${nicePrice(m.lastSwingLow)}` : 'Support zone';
+
+  const screenshotCopy = {
     bullish: {
       title: 'Constructive / rising', summary: 'The dominant visual slope rises from left to right.',
       observations: ['Price structure appears to be making progress toward the upper-right of the chart.', 'Momentum is visually constructive, though the model cannot confirm fundamentals or order flow.', 'The lower reaction band is the key area to watch if the structure pulls back.'],
@@ -478,12 +626,37 @@ function renderResults(m, elapsed) {
       bull: 'Acceptance above the upper reaction band could turn balance into a constructive expansion.',
       bear: 'Acceptance below the lower reaction band could turn balance into a defensive expansion.'
     }
-  }[m.direction];
+  };
+  const candleCopy = {
+    bullish: {
+      title: 'Constructive / rising', summary: 'EMA slope is positive and price is holding a sequence of higher swing highs and higher lows.',
+      observations: ['Swing structure is trending up: higher highs and higher lows.', 'The short-period EMA is sloping higher, so the near-term mean is rising.', 'The last swing low near {sup} is the level that keeps the uptrend sequence intact.'],
+      bull: 'Holding above the last swing low near {sup} keeps higher-low structure intact; a close back above {res} argues for continuation.',
+      bear: 'A decisive close below {sup} breaks the higher-low sequence and shifts the read to neutral or lower.'
+    },
+    bearish: {
+      title: 'Defensive / falling', summary: 'EMA slope is negative and price is printing lower swing highs and lower lows.',
+      observations: ['Swing structure is trending down: lower highs and lower lows.', 'The short-period EMA is sloping lower.', 'The last swing high near {res} is the level a recovery would need to reclaim.'],
+      bull: 'Reclaiming {res} on a closing basis would break the lower-high sequence and challenge the decline.',
+      bear: 'Rejection below {res} keeps pressure toward the last swing low near {sup} and beyond.'
+    },
+    range: {
+      title: 'Balanced / sideways', summary: 'EMA slope is roughly flat and swing structure is mixed — no clean trend.',
+      observations: ['Swing highs and lows are not consistently rising or falling.', 'The short-period EMA is close to flat.', 'The edges near {sup} and {res} matter more than the middle of the range.'],
+      bull: 'Acceptance above {res} would turn the balance into a constructive expansion.',
+      bear: 'Acceptance below {sup} would turn the balance into a defensive expansion.'
+    }
+  };
+  const fill = (s) => s.replace(/\{sup\}/g, nicePrice(m.lastSwingLow)).replace(/\{res\}/g, nicePrice(m.lastSwingHigh));
+  const copy = (candle ? candleCopy : screenshotCopy)[m.direction];
 
-  els.biasTitle.textContent = copy.title; els.biasSummary.textContent = copy.summary;
-  els.observations.innerHTML = copy.observations.map(text => `<li>${text}</li>`).join('');
-  els.bullScenario.textContent = price ? `${copy.bull} Reference: ${price.toLocaleString()}.` : copy.bull;
-  els.bearScenario.textContent = price ? `${copy.bear} Reference: ${price.toLocaleString()}.` : copy.bear;
+  els.biasTitle.textContent = copy.title;
+  els.biasSummary.textContent = candle ? fill(copy.summary) : copy.summary;
+  els.observations.innerHTML = copy.observations.map(text => `<li>${esc(candle ? fill(text) : text)}</li>`).join('');
+  const bull = candle ? fill(copy.bull) : copy.bull;
+  const bear = candle ? fill(copy.bear) : copy.bear;
+  els.bullScenario.textContent = price ? `${bull} Reference: ${price.toLocaleString()}.` : bull;
+  els.bearScenario.textContent = price ? `${bear} Reference: ${price.toLocaleString()}.` : bear;
   const color = m.direction === 'bearish' ? '#ff6b5f' : m.direction === 'range' ? '#64d9d2' : '#b9f227';
   els.biasOrb.style.borderColor = color; els.biasOrb.style.background = `${color}18`; els.biasOrb.querySelector('svg').style.stroke = color;
   els.biasArrow.setAttribute('d', m.direction === 'bearish' ? 'M5 8l5 5 3-3 6 7' : m.direction === 'range' ? 'M4 12h16M7 9l-3 3 3 3m10-6 3 3-3 3' : 'M5 16 10 11l3 3 6-7');
