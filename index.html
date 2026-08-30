@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="ChartLens turns chart screenshots or live crypto tickers into structured, educational market observations." />
+  <title>ChartLens — Market Structure Analysis</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css?v=5" />
+</head>
+<body>
+  <div class="noise"></div>
+  <header class="topbar">
+    <a class="brand" href="#" aria-label="ChartLens home">
+      <span class="brand-mark"><i></i><i></i><i></i></span>
+      <span>CHARTLENS</span>
+    </a>
+    <div class="top-actions">
+      <span class="status"><b></b> Analysis engine online</span>
+      <button class="auth-button" id="authButton" type="button">Sign in</button>
+      <button class="history-button" id="historyButton" type="button">Recent <span id="historyCount">0</span></button>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero" id="hero">
+      <div class="eyebrow"><span>01</span> Chart intelligence</div>
+      <h1>See the structure.<br><em>Not the noise.</em></h1>
+      <p class="hero-copy">Upload a chart screenshot or enter a live crypto ticker. ChartLens turns market structure into a clean, explainable brief.</p>
+
+      <div class="workspace-card">
+        <div class="mode-panel live-panel">
+          <div>
+            <span class="mode-kicker">Live market mode</span>
+            <strong>Analyze the current chart now</strong>
+            <p>Enter a ticker or company name. ChartLens searches global providers, including unofficial NEPSE daily data, renders the chart, then analyzes it.</p>
+          </div>
+          <button class="live-button" id="liveButton" type="button">
+            <span>Fetch & analyze now</span>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 0 1 13.7-5.7M20 12a8 8 0 0 1-13.7 5.7M18 3v5h-5M6 21v-5h5"/></svg>
+          </button>
+        </div>
+        <p class="live-status" id="liveStatus" role="status" aria-live="polite"></p>
+
+        <div class="section-divider"><span>or analyze a screenshot</span></div>
+
+        <div class="upload-zone" id="uploadZone" tabindex="0" role="button" aria-label="Upload chart screenshot">
+          <input id="fileInput" type="file" accept="image/png,image/jpeg,image/webp" hidden />
+          <div class="upload-icon">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5M5 14v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"/></svg>
+          </div>
+          <div>
+            <strong>Drop your chart here</strong>
+            <span>or click to browse · PNG, JPG, WEBP up to 12 MB</span>
+          </div>
+          <button class="browse-button" type="button" tabindex="-1">Choose image</button>
+        </div>
+
+        <div class="file-loaded" id="fileLoaded" hidden>
+          <img id="thumb" alt="Uploaded trading chart preview" />
+          <div class="file-meta">
+            <strong id="fileName">chart.png</strong>
+            <span id="fileDetails">PNG · 1.2 MB</span>
+          </div>
+          <button id="removeFile" type="button" aria-label="Remove uploaded image">×</button>
+        </div>
+
+        <div class="metadata-row">
+          <label>
+            <span>Ticker or company</span>
+            <input id="symbolInput" placeholder="e.g. AAPL, Toyota, NABIL, BTCUSDT" maxlength="48" autocomplete="off" />
+          </label>
+          <label>
+            <span>Market</span>
+            <select id="marketInput">
+              <option value="auto" selected>Auto detect</option>
+              <option value="crypto">Crypto</option>
+              <option value="us">US / NYSE / Nasdaq</option>
+              <option value="tse">Tokyo Stock Exchange</option>
+              <option value="nepse">NEPSE Nepal</option>
+              <option value="global">Other global</option>
+            </select>
+          </label>
+          <label>
+            <span>Interval</span>
+            <select id="timeframeInput">
+              <option value="15m">15 minutes</option>
+              <option value="1h" selected>1 hour</option>
+              <option value="4h">4 hours</option>
+              <option value="1D">1 day</option>
+              <option value="1W">1 week</option>
+            </select>
+          </label>
+          <label>
+            <span>Reference price <small>optional</small></span>
+            <input id="priceInput" type="number" min="0" step="any" placeholder="e.g. 64250" />
+          </label>
+        </div>
+        <div class="market-results" id="marketResults" hidden></div>
+
+        <div class="workspace-footer">
+          <button class="demo-button" id="demoButton" type="button">Try a demo chart</button>
+          <button class="analyze-button" id="analyzeButton" type="button" disabled>
+            <span>Analyze chart</span>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-5-5 5 5-5 5"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="trust-row">
+        <span><svg viewBox="0 0 24 24"><path d="M12 3 5 6v5c0 4.7 2.9 8.5 7 10 4.1-1.5 7-5.3 7-10V6l-7-3Z"/></svg> Runs locally in your browser</span>
+        <span><svg viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></svg> Screenshot mode stores no image</span>
+        <span><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5m0-8v.01"/></svg> Educational analysis only</span>
+      </div>
+    </section>
+
+    <section class="processing" id="processing" hidden>
+      <div class="scanner">
+        <div class="scan-grid"></div>
+        <div class="scan-line"></div>
+        <div class="scanner-center"><span id="scanPercent">0%</span><small>reading pixels</small></div>
+      </div>
+      <div class="process-copy">
+        <div class="eyebrow"><span>02</span> Visual processing</div>
+        <h2>Reading market structure…</h2>
+        <ul id="processSteps">
+          <li class="active">Mapping high-contrast price regions</li>
+          <li>Estimating directional slope</li>
+          <li>Locating reaction zones</li>
+          <li>Building an explainable brief</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="results" id="results" hidden>
+      <div class="results-heading">
+        <div>
+          <div class="eyebrow"><span>03</span> Analysis brief</div>
+          <h2><span id="resultSymbol">CHART</span> <small>/ <span id="resultTimeframe">1H</span></small></h2>
+        </div>
+        <button id="newAnalysis" class="new-analysis" type="button">New analysis</button>
+      </div>
+      <div class="result-actions">
+        <button id="favoriteButton" type="button">Save favorite</button>
+        <button id="trackerButton" type="button">Start tracker</button>
+        <span id="saveStatus" role="status" aria-live="polite"></span>
+      </div>
+
+      <div class="results-grid">
+        <article class="chart-panel">
+          <div class="panel-label"><span id="sourceLabel">Source image</span><small id="sourceDetail">Locally processed</small></div>
+          <div class="chart-frame">
+            <img id="resultImage" alt="Analyzed chart screenshot" />
+            <div class="zone zone-resistance"><span>Reaction zone</span></div>
+            <div class="zone zone-support"><span>Support zone</span></div>
+          </div>
+          <div class="image-stats">
+            <span id="imageDimensions">—</span>
+            <span id="edgeDensity">—</span>
+            <span id="analysisTime">—</span>
+          </div>
+        </article>
+
+        <div class="brief-column">
+          <article class="bias-card">
+            <div class="panel-label"><span>Structural bias</span><small id="confidenceLabel">Confidence —</small></div>
+            <div class="bias-main">
+              <div class="bias-orb" id="biasOrb"><svg viewBox="0 0 24 24"><path id="biasArrow" d="M5 16 10 11l3 3 6-7"/></svg></div>
+              <div><h3 id="biasTitle">—</h3><p id="biasSummary">—</p></div>
+            </div>
+            <div class="confidence-track"><i id="confidenceBar"></i></div>
+          </article>
+
+          <article class="observation-card">
+            <div class="panel-label"><span>What the image suggests</span><small>Visual heuristic</small></div>
+            <ul id="observations"></ul>
+          </article>
+
+          <div class="scenario-grid">
+            <article class="scenario bull">
+              <span>Upside scenario</span>
+              <p id="bullScenario">—</p>
+            </article>
+            <article class="scenario bear">
+              <span>Downside scenario</span>
+              <p id="bearScenario">—</p>
+            </article>
+          </div>
+
+          <article class="risk-card">
+            <svg viewBox="0 0 24 24"><path d="M12 3 2.5 20h19L12 3Z"/><path d="M12 9v5m0 3v.01"/></svg>
+            <p><strong>Not a trade signal.</strong> Screenshot analysis can miss indicators, labels and wider context. Confirm against live data before making any financial decision.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <span>CHARTLENS / MVP 0.1</span>
+    <p>Designed for observation, not prediction.</p>
+  </footer>
+
+  <aside class="history-drawer" id="historyDrawer" aria-hidden="true">
+    <div class="drawer-head"><h3>Recent analyses</h3><button id="closeHistory" type="button">×</button></div>
+    <div class="drawer-section">
+      <h4>Analyses</h4>
+      <div id="historyList" class="history-list"></div>
+    </div>
+    <div class="drawer-section">
+      <h4>Favorites</h4>
+      <div id="favoritesList" class="history-list"></div>
+    </div>
+    <div class="drawer-section">
+      <h4>Trackers</h4>
+      <div id="trackersList" class="history-list"></div>
+    </div>
+  </aside>
+  <div class="drawer-backdrop" id="drawerBackdrop" hidden></div>
+
+  <div class="auth-modal" id="authModal" hidden>
+    <div class="auth-card">
+      <button class="auth-close" id="authClose" type="button" aria-label="Close sign in">×</button>
+      <span class="mode-kicker">Optional account</span>
+      <h2>Save your ChartLens workspace</h2>
+      <p>Sign up or log in to sync analyses, favorites, and trackers with Firebase. If Firebase is not configured yet, ChartLens keeps everything locally on this device.</p>
+      <label>
+        <span>Email</span>
+        <input id="authEmail" type="email" placeholder="you@example.com" autocomplete="email" />
+      </label>
+      <label>
+        <span>Password</span>
+        <input id="authPassword" type="password" placeholder="Minimum 6 characters" autocomplete="current-password" />
+      </label>
+      <div class="auth-actions">
+        <button id="loginButton" type="button">Log in</button>
+        <button id="signupButton" type="button">Sign up</button>
+      </div>
+      <button class="google-button" id="googleButton" type="button">Continue with Google</button>
+      <button class="guest-button" id="logoutButton" type="button">Continue / sign out</button>
+      <p class="auth-status" id="authStatus" role="status" aria-live="polite"></p>
+    </div>
+  </div>
+
+  <canvas id="analysisCanvas" hidden></canvas>
+  <script>
+    window.CHARTLENS_FIREBASE_CONFIG = window.CHARTLENS_FIREBASE_CONFIG || null;
+    window.CHARTLENS_API_BASE = window.CHARTLENS_API_BASE || (
+      location.hostname.endsWith('github.io') ? 'https://chartlens101.web.app' : ''
+    );
+  </script>
+  <script src="firebase-config.js?v=5"></script>
+  <script src="app.js?v=5"></script>
+</body>
+</html>
