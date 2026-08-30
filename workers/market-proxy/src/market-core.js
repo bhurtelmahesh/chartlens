@@ -149,37 +149,8 @@ async function fetchJson(url, headers = {}) {
   }
 }
 
-function normalizeArray(payload) {
-  if (Array.isArray(payload)) return payload;
-  if (Array.isArray(payload?.data)) return payload.data;
-  if (Array.isArray(payload?.results)) return payload.results;
-  if (Array.isArray(payload?.content)) return payload.content;
-  if (payload && typeof payload === "object") {
-    const firstArray = Object.values(payload).find(Array.isArray);
-    if (firstArray) return firstArray;
-  }
-  return [];
-}
-
-function pickNumber(item, keys) {
-  for (const key of keys) {
-    const value = item?.[key];
-    const number = Number(String(value ?? "").replace(/,/g, ""));
-    if (Number.isFinite(number) && number > 0) return number;
-  }
-  return null;
-}
-
-function pickTime(item, index) {
-  const value = item.businessDate || item.date || item.time || item.x || item.timestamp || item.lastUpdatedDateTime;
-  if (typeof value === "number") return value > 9999999999 ? value : value * 1000;
-  const parsed = Date.parse(String(value || ""));
-  return Number.isFinite(parsed) ? parsed : Date.now() - (index * 86400000);
-}
-
 // --- providers ----------------------------------------------------------
 
-function nepseApiBase(env) { return env?.NEPSE_API_BASE || "https://nepseapi.surajrimal.dev"; }
 function shareBazaarBase(env) { return env?.SHAREBAZAAR_API_BASE || "https://nepsetty.kokomo.workers.dev"; }
 
 async function searchYahoo(query, market) {
@@ -234,27 +205,6 @@ async function searchNepse(query, env) {
   } catch {
     // ShareBazaar is current-quote only and best-effort.
   }
-  try {
-    const list = await fetchJson(`${nepseApiBase(env)}/CompanyList`);
-    const items = normalizeArray(list);
-    const matches = items.filter(item => {
-      const symbol = String(item.symbol || item.companyCode || item.securitySymbol || "").toUpperCase();
-      const name = String(item.companyName || item.securityName || item.name || "").toUpperCase();
-      return symbol.includes(q) || name.includes(q);
-    }).slice(0, 10);
-    if (matches.length) {
-      return matches.map(item => ({
-        symbol: String(item.symbol || item.companyCode || item.securitySymbol || "").toUpperCase(),
-        name: item.companyName || item.securityName || item.name || item.symbol,
-        market: "nepse",
-        exchange: "Nepal Stock Exchange",
-        provider: "nepse-unofficial",
-        type: "equity"
-      }));
-    }
-  } catch {
-    // Hosted unofficial service is best-effort. Fall back to bundled common symbols.
-  }
   return localMatches;
 }
 
@@ -296,21 +246,6 @@ async function getYahooCandles(symbol, requestedInterval) {
   return candles;
 }
 
-function parseNepseCandles(payload) {
-  const rows = normalizeArray(payload);
-  return rows.map((item, index) => {
-    const close = pickNumber(item, ["closePrice", "closingPrice", "ltp", "lastTradedPrice", "y"]);
-    const high = pickNumber(item, ["highPrice", "high", "maxPrice"]) || close;
-    const low = pickNumber(item, ["lowPrice", "low", "minPrice"]) || close;
-    const open = pickNumber(item, ["openPrice", "open", "previousClose"]) || close;
-    return {
-      time: pickTime(item, index),
-      open, high, low, close,
-      volume: pickNumber(item, ["totalTradedQuantity", "volume", "quantity", "totalTrades"]) || 0
-    };
-  }).filter(isRealBar).sort((a, b) => a.time - b.time);
-}
-
 // TradingView UDF history feed: { s, t:[], o:[], h:[], l:[], c:[], v:[] }
 function parseUdfCandles(payload) {
   if (!payload || payload.s !== "ok" || !Array.isArray(payload.t)) return [];
@@ -350,24 +285,11 @@ async function getShareBazaarQuote(symbol, env) {
 
 async function getNepseCandles(symbol, env) {
   const clean = cleanSymbol(symbol);
-  let lastError;
   try {
     return await getMerolaganiCandles(clean, env);
-  } catch (error) {
-    lastError = error;
-  }
-  const routes = [
-    `${nepseApiBase(env)}/DailyScripPriceGraph?symbol=${encodeURIComponent(clean)}`,
-    `${nepseApiBase(env)}/PriceVolumeHistory?symbol=${encodeURIComponent(clean)}`
-  ];
-  for (const url of routes) {
-    try {
-      const payload = await fetchJson(url);
-      const candles = parseNepseCandles(payload);
-      if (candles.length >= 10) return candles.slice(-180);
-    } catch (error) {
-      lastError = error;
-    }
+  } catch {
+    // merolagani is the only NEPSE history source. Fall through to the
+    // latest-quote check so the error can at least name a current price.
   }
   try {
     const quote = await getShareBazaarQuote(clean, env);

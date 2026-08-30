@@ -4,7 +4,9 @@ compatibility_date = "2026-08-30"
 
 [vars]
 MEROLAGANI_API_BASE = "https://merolagani.com"
-NEPSE_API_BASE = "https://nepseapi.surajrimal.dev"
+# NEPSE_API_BASE (nepseapi.surajrimal.dev) removed 2026-08-30: the host no
+# longer resolves and every call burned the full 12s fetch timeout, on the
+# autocomplete path as well as the candles path.
 SHAREBAZAAR_API_BASE = "https://nepsetty.kokomo.workers.dev"
 
 # Primary rate limit: 60 requests / 60s per client IP. Free, no KV.
