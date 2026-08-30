@@ -245,7 +245,12 @@
   </div>
 
   <canvas id="analysisCanvas" hidden></canvas>
-  <script>window.CHARTLENS_FIREBASE_CONFIG = window.CHARTLENS_FIREBASE_CONFIG || null;</script>
+  <script>
+    window.CHARTLENS_FIREBASE_CONFIG = window.CHARTLENS_FIREBASE_CONFIG || null;
+    window.CHARTLENS_API_BASE = window.CHARTLENS_API_BASE || (
+      location.hostname.endsWith('github.io') ? 'https://chartlens101.web.app' : ''
+    );
+  </script>
   <script src="firebase-config.js?v=5"></script>
   <script src="app.js?v=5"></script>
 </body>

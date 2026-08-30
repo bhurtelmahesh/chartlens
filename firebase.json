@@ -3,6 +3,7 @@
     "authorizedDomains": [
       "localhost",
       "127.0.0.1",
+      "bhurtelmahesh.github.io",
       "chartlens101.web.app",
       "chartlens101.firebaseapp.com"
     ],
