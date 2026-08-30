@@ -121,8 +121,9 @@ footer { border-top: 1px solid var(--line); min-height: 100px; padding: 0 clamp(
 .auth-card label span { display: block; color: var(--muted); font: 9px "DM Mono", monospace; text-transform: uppercase; margin-bottom: 6px; }
 .auth-card input { width: 100%; background: transparent; color: var(--ink); border: 0; outline: 0; }
 .auth-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
-.auth-actions button, .guest-button { border: 0; background: var(--acid); color: #101409; padding: 12px; font-weight: 800; cursor: pointer; }
+.auth-actions button, .guest-button, .google-button { border: 0; background: var(--acid); color: #101409; padding: 12px; font-weight: 800; cursor: pointer; }
 .auth-actions button + button { background: #1a2312; color: var(--acid); border: 1px solid #40502e; }
+.google-button { width: 100%; margin-top: 10px; background: #f7fbff; color: #151515; border: 1px solid #d6dde5; }
 .guest-button { width: 100%; margin-top: 10px; background: transparent; color: var(--muted); border: 1px solid var(--line); }
 .auth-status { min-height: 18px; color: var(--cyan) !important; font: 10px "DM Mono", monospace !important; text-transform: uppercase; }
 

@@ -16,7 +16,7 @@ const els = {
   historyDrawer: $('#historyDrawer'), closeHistory: $('#closeHistory'), drawerBackdrop: $('#drawerBackdrop'), historyList: $('#historyList'),
   favoritesList: $('#favoritesList'), trackersList: $('#trackersList'), authButton: $('#authButton'), authModal: $('#authModal'),
   authClose: $('#authClose'), authEmail: $('#authEmail'), authPassword: $('#authPassword'), loginButton: $('#loginButton'),
-  signupButton: $('#signupButton'), logoutButton: $('#logoutButton'), authStatus: $('#authStatus')
+  signupButton: $('#signupButton'), googleButton: $('#googleButton'), logoutButton: $('#logoutButton'), authStatus: $('#authStatus')
 };
 
 const state = {
@@ -545,6 +545,22 @@ async function initializeFirebase() {
   }
 }
 
+async function signInWithGoogle() {
+  if (!state.firebase.enabled) {
+    els.authStatus.textContent = 'Add Firebase config first. For now, your workspace is saved locally.';
+    return;
+  }
+  try {
+    els.authStatus.textContent = 'Opening Google sign-in…';
+    const provider = new state.firebase.api.GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: 'select_account' });
+    await state.firebase.api.signInWithPopup(state.firebase.auth, provider);
+    els.authModal.hidden = true;
+  } catch (error) {
+    els.authStatus.textContent = error.message;
+  }
+}
+
 async function loadCloudWorkspace() {
   if (!state.firebase.enabled || !state.user) return;
   const { doc, getDoc, setDoc } = state.firebase.api;
@@ -619,6 +635,7 @@ els.authButton.addEventListener('click', () => { els.authModal.hidden = false; }
 els.authClose.addEventListener('click', () => { els.authModal.hidden = true; });
 els.loginButton.addEventListener('click', () => handleAuth('login'));
 els.signupButton.addEventListener('click', () => handleAuth('signup'));
+els.googleButton.addEventListener('click', signInWithGoogle);
 els.logoutButton.addEventListener('click', signOutOrClose);
 
 state.workspace.analyses = localRead('chartlens-analyses', localRead('chartlens-history', []));

@@ -1,0 +1,76 @@
+rules_version = '2';
+
+// ===============================================================
+// Assumed Data Model
+// ===============================================================
+//
+// Collection path: users/{userId}/workspace/{workspaceDocId}
+// Allowed document IDs: analyses, favorites, trackers
+// Fields:
+//   - items: list (required, max 50) - client-owned private workspace records
+//   - updatedAt: string (required, ISO-like timestamp, 10..40 chars)
+//
+// The current client stores each workspace section as one owner-private
+// document. There are no public profiles, shared records, roles, or admin
+// fields in this data model.
+//
+// ===============================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAllowedWorkspaceDoc(workspaceDocId) {
+      return workspaceDocId in ['analyses', 'favorites', 'trackers'];
+    }
+
+    function hasOnlyAllowedWorkspaceFields(data) {
+      return data.keys().hasOnly(['items', 'updatedAt']);
+    }
+
+    function hasRequiredWorkspaceFields(data) {
+      return data.keys().hasAll(['items', 'updatedAt']);
+    }
+
+    function isValidUpdatedAt(data) {
+      return data.updatedAt is string
+        && data.updatedAt.size() >= 10
+        && data.updatedAt.size() <= 40
+        && data.updatedAt.matches('^\\d{4}-\\d{2}-\\d{2}T.*Z$');
+    }
+
+    function isValidWorkspaceDocument(data) {
+      return hasOnlyAllowedWorkspaceFields(data)
+        && hasRequiredWorkspaceFields(data)
+        && data.items is list
+        && data.items.size() <= 50
+        && isValidUpdatedAt(data);
+    }
+
+    // ===============================================================
+    // Owner-private ChartLens workspace
+    // ===============================================================
+
+    match /users/{userId}/workspace/{workspaceDocId} {
+      allow read: if isOwner(userId) && isAllowedWorkspaceDoc(workspaceDocId);
+      allow create, update: if isOwner(userId)
+        && isAllowedWorkspaceDoc(workspaceDocId)
+        && isValidWorkspaceDocument(request.resource.data);
+      allow delete: if isOwner(userId) && isAllowedWorkspaceDoc(workspaceDocId);
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

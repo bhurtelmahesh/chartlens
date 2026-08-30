@@ -49,12 +49,23 @@ Live market mode uses Binance public candle data and currently works best with c
 
 ## Firebase Hosting
 
-This repo includes Firebase Hosting and Functions config. After creating a Firebase project, connect it with:
+This repo is connected to Firebase project `chartlens101` and includes Firebase Hosting, Functions, Authentication, and Firestore config.
+
+The registered Firebase Web App is `chartlens-web`, and `firebase-config.js` contains the public browser SDK config. ChartLens uses:
+
+- Firebase Authentication for optional Email/password login and Google Sign-in.
+- Cloud Firestore for owner-private workspace sync: analyses, favorites, and trackers under `users/{uid}/workspace/*`.
+
+Deploy the Firebase backend config and app with:
 
 ```bash
 npm --prefix functions install
-firebase use --add
-firebase deploy
+npx -y firebase-tools@latest deploy --only auth,firestore,hosting,functions
 ```
 
-For login/signup and cloud sync, replace `firebase-config.js` with your Firebase web app config. Keep `firebase-config.example.js` as the template.
+For local testing, run:
+
+```bash
+npx -y firebase-tools@latest emulators:start --only firestore
+npx -y firebase-tools@latest hosting:channel:deploy preview
+```
