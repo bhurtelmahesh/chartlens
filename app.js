@@ -12,7 +12,7 @@ const els = {
   liveProgress: $('#liveProgress'), liveProgressLabel: $('#liveProgressLabel'), liveProgressTrack: $('#liveProgressTrack'), liveProgressBar: $('#liveProgressBar'),
   hero: $('#hero'), processing: $('#processing'), results: $('#results'), scanPercent: $('#scanPercent'), steps: [...document.querySelectorAll('#processSteps li')],
   resultImage: $('#resultImage'), resultSymbol: $('#resultSymbol'), resultTimeframe: $('#resultTimeframe'),
-  sourceLabel: $('#sourceLabel'), sourceDetail: $('#sourceDetail'), dimensions: $('#imageDimensions'), edgeDensity: $('#edgeDensity'), analysisTime: $('#analysisTime'),
+  sourceLabel: $('#sourceLabel'), sourceDetail: $('#sourceDetail'), dimensions: $('#imageDimensions'), edgeDensity: $('#edgeDensity'), analysisTime: $('#analysisTime'), dataNotice: $('#dataNotice'),
   confidenceLabel: $('#confidenceLabel'), confidenceBar: $('#confidenceBar'), biasTitle: $('#biasTitle'),
   biasSummary: $('#biasSummary'), biasOrb: $('#biasOrb'), biasArrow: $('#biasArrow'), observations: $('#observations'),
   bullScenario: $('#bullScenario'), bearScenario: $('#bearScenario'), newAnalysis: $('#newAnalysis'),
@@ -453,6 +453,9 @@ function renderResults(m, elapsed) {
   els.resultImage.src = state.image.src; els.resultSymbol.textContent = symbol; els.resultTimeframe.textContent = timeframe;
   els.sourceLabel.textContent = state.source === 'live' ? 'Live rendered chart' : 'Source image';
   els.sourceDetail.textContent = state.source === 'live' ? `${state.marketMeta?.provider || 'market'} data` : 'Locally processed';
+  const notice = state.source === 'live' ? (state.marketMeta?.notice || '') : '';
+  els.dataNotice.textContent = notice;
+  els.dataNotice.hidden = !notice;
   els.dimensions.textContent = `${m.width} × ${m.height} px`; els.edgeDensity.textContent = `${m.density.toFixed(1)}% structure density`; els.analysisTime.textContent = `${(elapsed/1000).toFixed(1)}s local scan`;
   els.confidenceLabel.textContent = `Confidence ${m.confidence}%`; requestAnimationFrame(() => els.confidenceBar.style.width = `${m.confidence}%`);
 
@@ -499,6 +502,7 @@ function renderResults(m, elapsed) {
     confidence: m.confidence,
     status: `${copy.title} · Confidence ${m.confidence}%`,
     referencePrice: Number.isFinite(price) ? price : null,
+    notice: notice || null,
     date: new Date().toISOString()
   };
   saveAnalysis(state.lastAnalysis);
