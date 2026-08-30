@@ -11,6 +11,7 @@ import { corsHeaders, createRateLimiter, handleSearch, handleCandles } from "./m
 const limiter = createRateLimiter({ limit: 60, windowMs: 60000 });
 
 const env = {
+  MEROLAGANI_API_BASE: process.env.MEROLAGANI_API_BASE,
   NEPSE_API_BASE: process.env.NEPSE_API_BASE,
   SHAREBAZAAR_API_BASE: process.env.SHAREBAZAAR_API_BASE
 };

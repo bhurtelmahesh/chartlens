@@ -265,6 +265,13 @@ async function getBinanceCandles(symbol, interval) {
   }));
 }
 
+// A real OHLC bar always has four positive prices. Yahoo (and some others)
+// pad the most recent, still-forming bar with nulls, which Number() turns
+// into 0 and Number.isFinite() happily accepts — so require > 0.
+function isRealBar(c) {
+  return [c.open, c.high, c.low, c.close].every(v => Number.isFinite(v) && v > 0);
+}
+
 function parseYahooChart(payload) {
   const result = payload?.chart?.result?.[0];
   const timestamps = result?.timestamp || [];
@@ -276,7 +283,7 @@ function parseYahooChart(payload) {
     low: Number(quote.low?.[index]),
     close: Number(quote.close?.[index]),
     volume: Number(quote.volume?.[index] || 0)
-  })).filter(c => [c.open, c.high, c.low, c.close].every(Number.isFinite));
+  })).filter(isRealBar);
 }
 
 async function getYahooCandles(symbol, requestedInterval) {
@@ -301,7 +308,38 @@ function parseNepseCandles(payload) {
       open, high, low, close,
       volume: pickNumber(item, ["totalTradedQuantity", "volume", "quantity", "totalTrades"]) || 0
     };
-  }).filter(c => [c.open, c.high, c.low, c.close].every(Number.isFinite)).sort((a, b) => a.time - b.time);
+  }).filter(isRealBar).sort((a, b) => a.time - b.time);
+}
+
+// TradingView UDF history feed: { s, t:[], o:[], h:[], l:[], c:[], v:[] }
+function parseUdfCandles(payload) {
+  if (!payload || payload.s !== "ok" || !Array.isArray(payload.t)) return [];
+  return payload.t.map((time, i) => ({
+    time: (time > 9999999999 ? time : time * 1000),
+    open: Number(payload.o?.[i]),
+    high: Number(payload.h?.[i]),
+    low: Number(payload.l?.[i]),
+    close: Number(payload.c?.[i]),
+    volume: Number(payload.v?.[i] || 0)
+  })).filter(isRealBar).sort((a, b) => a.time - b.time);
+}
+
+function merolaganiBase(env) { return env?.MEROLAGANI_API_BASE || "https://merolagani.com"; }
+
+// Primary NEPSE history source: merolagani's TradingView chart feed. Public,
+// no auth, daily bars via resolution=D.
+async function getMerolaganiCandles(symbol, env) {
+  const clean = cleanSymbol(symbol);
+  const now = Math.floor(Date.now() / 1000);
+  const from = now - 400 * 86400;
+  const url = `${merolaganiBase(env)}/handlers/webrequesthandler.ashx?type=get_advanced_chart` +
+    `&symbol=${encodeURIComponent(clean)}&resolution=D&isAdjust=1&currencyCode=NPR` +
+    `&rangeStartDate=${from}&rangeEndDate=${now}`;
+  const payload = await fetchJson(url, { "Referer": "https://merolagani.com/" });
+  if (payload?.s === "no_data") throw new Error(`No NEPSE history for ${clean}`);
+  const candles = parseUdfCandles(payload);
+  if (candles.length < 20) throw new Error(`Not enough NEPSE candles for ${clean}`);
+  return candles.slice(-260);
 }
 
 async function getShareBazaarQuote(symbol, env) {
@@ -312,11 +350,16 @@ async function getShareBazaarQuote(symbol, env) {
 
 async function getNepseCandles(symbol, env) {
   const clean = cleanSymbol(symbol);
+  let lastError;
+  try {
+    return await getMerolaganiCandles(clean, env);
+  } catch (error) {
+    lastError = error;
+  }
   const routes = [
     `${nepseApiBase(env)}/DailyScripPriceGraph?symbol=${encodeURIComponent(clean)}`,
     `${nepseApiBase(env)}/PriceVolumeHistory?symbol=${encodeURIComponent(clean)}`
   ];
-  let lastError;
   for (const url of routes) {
     try {
       const payload = await fetchJson(url);
@@ -329,12 +372,12 @@ async function getNepseCandles(symbol, env) {
   try {
     const quote = await getShareBazaarQuote(clean, env);
     if (quote?.ltp) {
-      throw new Error(`NEPSE historical candles are unavailable for ${clean}, but latest ShareBazaar quote is ${quote.ltp}. The chart API may be offline or rate-limited.`);
+      throw new Error(`No NEPSE price history for ${clean} right now (latest quote ${quote.ltp}). NEPSE data is experimental and community-sourced — try again later.`);
     }
   } catch (quoteError) {
-    if (String(quoteError.message || "").includes("latest ShareBazaar quote")) throw quoteError;
+    if (String(quoteError.message || "").includes("NEPSE price history")) throw quoteError;
   }
-  throw new Error(`NEPSE data unavailable for ${clean}. The unofficial NEPSE API may be offline or rate-limited. ${lastError?.message || ""}`.trim());
+  throw new Error(`Couldn't load NEPSE history for ${clean}. NEPSE support is experimental and depends on community sources — try again later or use screenshot mode.`);
 }
 
 // --- request orchestration (shared by both entrypoints) -----------------
@@ -380,12 +423,14 @@ export async function handleCandles({ symbol = "BTCUSDT", market = "auto", inter
     const binInterval = intervalForProvider("binance", requestedInterval);
     try {
       return { status: 200, body: { meta: { symbol, market: "crypto", provider: "binance", exchange: "Binance", interval: binInterval }, candles: await getBinanceCandles(symbol, binInterval) } };
-    } catch (binanceError) {
+    } catch {
+      // Binance blocks many datacenter IPs (HTTP 451/403); Yahoo's crypto
+      // feed is the routine path from the proxy, not an alarming fallback.
       const yahooSymbol = yahooCryptoSymbol(symbol);
       return {
         status: 200,
         body: {
-          meta: { symbol, market: "crypto", provider: "yahoo-crypto-fallback", exchange: "Yahoo Finance", interval: intervalForProvider("yahoo", requestedInterval), name: yahooSymbol, notice: `Binance unavailable from proxy (${binanceError.message}); using Yahoo Finance fallback.` },
+          meta: { symbol, market: "crypto", provider: "yahoo", exchange: "Yahoo Finance", interval: intervalForProvider("yahoo", requestedInterval), name: yahooSymbol },
           candles: await getYahooCandles(yahooSymbol, requestedInterval)
         }
       };
